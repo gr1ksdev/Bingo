@@ -115,6 +115,10 @@ try {
     () => document.querySelector(".drawing-active") !== null,
   );
   await play.getByRole("button", { name: "Limpar desenhos" }).click();
+  const confirmDrawing = play.locator(".dialog-button-confirm");
+  if (await confirmDrawing.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await confirmDrawing.click();
+  }
   await play.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem("bingo:player:v1")).strokes.length === 0,
@@ -126,6 +130,10 @@ try {
       JSON.parse(localStorage.getItem("bingo:player:v1")).strokes.length === 1,
   );
   await play.locator(".play-actions button").first().click();
+  const confirmMarks = play.locator(".dialog-button-confirm");
+  if (await confirmMarks.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await confirmMarks.click();
+  }
   await play.waitForFunction(
     () =>
       Object.keys(JSON.parse(localStorage.getItem("bingo:player:v1")).marks)
@@ -189,10 +197,11 @@ try {
     12,
   );
   for (let i = 12; i < 75; i++) await drawButton.click();
-  await admin.getByRole("button", { name: "Todas saíram!" }).waitFor();
+  await admin.locator(".draw-finished-banner").waitFor();
   assert.equal(
-    await admin.getByRole("button", { name: "Todas saíram!" }).isDisabled(),
-    true,
+    await admin.locator(".draw-button").count(),
+    0,
+    "Não deve existir botão de sorteio disponível após 75 pedras.",
   );
   await play.waitForFunction(
     () => document.querySelector(".draw-count")?.textContent === "75/75",

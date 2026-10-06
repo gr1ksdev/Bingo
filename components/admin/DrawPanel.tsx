@@ -1,5 +1,6 @@
 import { BingoBall } from "@/components/bingo/BingoBall";
 import { Icon } from "@/components/ui/Icon";
+
 export function DrawPanel({
   drawn,
   onDraw,
@@ -8,6 +9,8 @@ export function DrawPanel({
   onDraw: () => void;
 }) {
   const current = drawn.at(-1) ?? null;
+  const isFinished = drawn.length === 75;
+
   return (
     <section className="draw-panel">
       <h2 className="paper-strip">Pedra da vez</h2>
@@ -21,16 +24,23 @@ export function DrawPanel({
           <BingoBall number={current} />
         </div>
         <div className="draw-controls">
-          <button
-            className="primary-button draw-button"
-            onClick={onDraw}
-            disabled={drawn.length === 75}
-          >
-            <Icon name="shuffle" />
-            <span>
-              {drawn.length === 75 ? "Todas saíram!" : "SORTEAR PEDRA"}
-            </span>
-          </button>
+          {isFinished ? (
+            <div className="draw-finished-banner" role="status">
+              <Icon
+                name="check"
+                width={22}
+                height={22}
+                className="inline-icon"
+              />
+              <strong>SORTEIO CONCLUÍDO!</strong>
+              <span>Todas as 75 pedras foram cantadas.</span>
+            </div>
+          ) : (
+            <button className="primary-button draw-button" onClick={onDraw}>
+              <Icon name="shuffle" />
+              <span>SORTEAR PEDRA</span>
+            </button>
+          )}
           <div className="paper draw-counter">
             <span>Pedras sorteadas</span>
             <strong>

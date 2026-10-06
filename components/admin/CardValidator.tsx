@@ -80,7 +80,11 @@ export function CardValidator({
           rows={2}
           disabled={busy}
         />
-        <button className="green-button" disabled={busy || !token.trim()}>
+        <button
+          type="submit"
+          className={`green-button ${token.trim() && !busy ? "ready-to-submit" : ""}`}
+          disabled={busy || !token.trim()}
+        >
           {busy ? "CONFERINDO…" : "VALIDAR CARTELA"}
         </button>
       </form>

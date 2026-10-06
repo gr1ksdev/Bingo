@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   description:
     "Uma cartela, suas canetinhas e um pouquinho de sorte. Jogue Bingo na sua mesa digital.",
   applicationName: "Bingo",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Bingo",
+  },
 };
 export const viewport: Viewport = {
   width: "device-width",

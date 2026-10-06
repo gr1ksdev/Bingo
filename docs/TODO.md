@@ -12,6 +12,7 @@
 - [x] Adapter Telegram e fronteira de autenticação
 - [x] lint, typecheck, tests, build
 - [x] Revisão responsiva e handoff final
+- [x] Polimento e robustez mobile (artefato visual de faixa beige corrigido, variação orgânica estável de marcas, confirmação tátil de troca de cartela sem window.confirm, PWA readiness, affordance do validador e estado final 75/75 no admin)
 
 ## Próxima fase
 

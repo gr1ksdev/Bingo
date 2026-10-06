@@ -13,6 +13,9 @@ import { DrawingToolbar, type DrawingMode } from "./DrawingToolbar";
 import { DrawingCanvas } from "./DrawingCanvas";
 import { Icon } from "@/components/ui/Icon";
 import { MAX_STROKES, MAX_DRAWING_POINTS } from "@/lib/drawing";
+
+type ConfirmAction = "swap" | "clear-marks" | "clear-drawings" | null;
+
 export function PlayerScreen() {
   const player = playerStore.useValue();
   const game = gameStore.useValue();
@@ -21,10 +24,13 @@ export function PlayerScreen() {
   const [message, setMessage] = useState("");
   const [won, setWon] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     telegram.init();
   }, []);
+
   useEffect(() => {
     if (message)
       resultRef.current?.scrollIntoView({
@@ -34,6 +40,16 @@ export function PlayerScreen() {
           : "smooth",
       });
   }, [message]);
+
+  useEffect(() => {
+    if (!confirmAction) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setConfirmAction(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [confirmAction]);
+
   if (!player || !game)
     return (
       <main className="app-shell">
@@ -42,17 +58,57 @@ export function PlayerScreen() {
         </p>
       </main>
     );
+
   const { card, color, marks, strokes } = player.value;
   const { drawn, pattern } = game.value;
   const token = encodeUnsigned(card);
-  const clearDrawings = () => {
-    if (
-      window.confirm(
-        "Apagar todos os rabiscos? Os números e as marcações serão preservados.",
-      )
-    )
-      playerStore.update((p) => ({ ...p, strokes: [] }));
+
+  const hasMarks = Object.keys(marks).length > 0;
+  const hasStrokes = strokes.length > 0;
+
+  const handleRequestClearDrawings = () => {
+    if (hasStrokes) {
+      setConfirmAction("clear-drawings");
+    }
   };
+
+  const handleRequestClearMarks = () => {
+    if (hasMarks) {
+      setConfirmAction("clear-marks");
+    }
+  };
+
+  const handleRequestSwap = () => {
+    if (!hasMarks && !hasStrokes) {
+      playerStore.update((p) => ({
+        ...p,
+        card: createUnsignedCard(p.card.name),
+        marks: {},
+        strokes: [],
+      }));
+      setMessage("");
+    } else {
+      setConfirmAction("swap");
+    }
+  };
+
+  const handleConfirmAction = () => {
+    if (confirmAction === "swap") {
+      playerStore.update((p) => ({
+        ...p,
+        card: createUnsignedCard(p.card.name),
+        marks: {},
+        strokes: [],
+      }));
+      setMessage("");
+    } else if (confirmAction === "clear-marks") {
+      playerStore.update((p) => ({ ...p, marks: {} }));
+    } else if (confirmAction === "clear-drawings") {
+      playerStore.update((p) => ({ ...p, strokes: [] }));
+    }
+    setConfirmAction(null);
+  };
+
   function callBingo() {
     const result = validateBingo(card.nums, drawn, pattern);
     setWon(result.won);
@@ -62,6 +118,7 @@ export function PlayerScreen() {
         : `Quase lá! Faltam ${result.closest.missing.length} pedra${result.closest.missing.length === 1 ? "" : "s"} na sua combinação mais próxima: ${result.closest.missing.map(ballLabel).join(", ")}.`,
     );
   }
+
   return (
     <main className="app-shell player-shell">
       <BingoHeader
@@ -135,7 +192,7 @@ export function PlayerScreen() {
           playerStore.update((p) => ({ ...p, strokes: p.strokes.slice(0, -1) }))
         }
         canUndo={strokes.length > 0}
-        clear={clearDrawings}
+        clear={handleRequestClearDrawings}
       />
       <MarkerCase
         color={color}
@@ -147,11 +204,9 @@ export function PlayerScreen() {
       <div className="play-actions">
         <button
           className="round-button action-small"
-          disabled={!Object.keys(marks).length}
-          onClick={() => {
-            if (window.confirm("Limpar apenas as marcações de tinta?"))
-              playerStore.update((p) => ({ ...p, marks: {} }));
-          }}
+          disabled={!hasMarks}
+          onClick={handleRequestClearMarks}
+          aria-label="Limpar marcas de tinta"
         >
           <Icon name="trash" />
           <span>
@@ -166,21 +221,8 @@ export function PlayerScreen() {
         </button>
         <button
           className="round-button action-small"
-          onClick={() => {
-            if (
-              window.confirm(
-                "Trocar de cartela? A cartela atual e sua arte serão substituídas.",
-              )
-            ) {
-              playerStore.update((p) => ({
-                ...p,
-                card: createUnsignedCard(p.card.name),
-                marks: {},
-                strokes: [],
-              }));
-              setMessage("");
-            }
-          }}
+          onClick={handleRequestSwap}
+          aria-label="Trocar de cartela"
         >
           <Icon name="shuffle" />
           <span>
@@ -265,6 +307,58 @@ export function PlayerScreen() {
         </p>
       </details>
       <p className="footer-note">Feito de papel, tinta e bons momentos.</p>
+
+      {confirmAction && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmAction(null);
+          }}
+        >
+          <div
+            className="paper dialog-paper"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dialog-title"
+            aria-describedby="dialog-desc"
+          >
+            <div className="dialog-header">
+              <h3 id="dialog-title" className="paper-strip">
+                {confirmAction === "swap" && "Trocar de cartela?"}
+                {confirmAction === "clear-marks" && "Limpar marcações?"}
+                {confirmAction === "clear-drawings" && "Apagar rabiscos?"}
+              </h3>
+            </div>
+            <p id="dialog-desc" className="dialog-message">
+              {confirmAction === "swap" &&
+                "Sua cartela atual, todas as manchas de tinta e seus rabiscos serão substituídos por uma nova cartela. Deseja continuar?"}
+              {confirmAction === "clear-marks" &&
+                "Todas as marcas de tinta serão apagadas. Os números da cartela e seus rabiscos a caneta serão preservados."}
+              {confirmAction === "clear-drawings" &&
+                "Todos os traços e desenhos serão removidos do papel. Os números e suas marcações de tinta continuarão intactos."}
+            </p>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="dialog-button-cancel"
+                onClick={() => setConfirmAction(null)}
+              >
+                {confirmAction === "swap" ? "Manter cartela" : "Cancelar"}
+              </button>
+              <button
+                type="button"
+                className="dialog-button-confirm"
+                onClick={handleConfirmAction}
+              >
+                {confirmAction === "swap" && "Sim, trocar"}
+                {confirmAction === "clear-marks" && "Limpar marcas"}
+                {confirmAction === "clear-drawings" && "Apagar rabiscos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,6 +1,12 @@
+import { memo } from "react";
 import { ballLabel } from "@/lib/bingo/constants";
 import { Icon } from "@/components/ui/Icon";
-export function DrawHistory({ drawn }: { drawn: number[] }) {
+
+export const DrawHistory = memo(function DrawHistory({
+  drawn,
+}: {
+  drawn: number[];
+}) {
   return (
     <details className="paper history">
       <summary>
@@ -30,4 +36,4 @@ export function DrawHistory({ drawn }: { drawn: number[] }) {
       )}
     </details>
   );
-}
+});
