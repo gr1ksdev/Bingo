@@ -12,4 +12,6 @@ Cartelas 5×5, números em ordem de linhas, centro `null` (FREE). Colunas B 1–
 
 Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marca irregular translúcida, sete canetas em estojo físico, botões táteis; respeitar safe areas e reduced motion. Assets procedurais locais, fontes com licença.
 
-Estado inicial: implementação em andamento; detalhes e resultados reais em `docs/HANDOFF.md`.
+MVP implementado: jogador, admin, canvas, persistência, tokens unsigned, assinatura HMAC server-side e adapter Telegram. Todas as cinco regras comuns já disponíveis; padrão linha horizontal. Assinatura confirma origem/identidade, com escopo `local`, sem autoridade de partida remota. Emissão Telegram tem endpoint preparado, sem UI nem SDK carregado ainda. Detalhes e resultados reais em `docs/HANDOFF.md`.
+
+Validação em 2026-10-06: lint, typecheck, 22 testes e build passaram. Smoke passou para o fluxo local e 15 layouts móveis sem overflow; capturas em `docs/qa/`. Testes físicos e integração real Telegram ainda pendentes. `docs/HANDOFF.md` registra commits, configuração e próxima etapa.
