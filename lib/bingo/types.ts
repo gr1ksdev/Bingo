@@ -1,19 +1,10 @@
-export type CardNumbers = (number | null)[];
-export type UnsignedCard = {
-  v: 1;
-  name: string;
-  nums: CardNumbers;
-  createdAt: number;
-};
-export type SignedCard = {
-  v: 1;
-  uid: number;
-  gid: string;
-  cid: string;
-  nums: CardNumbers;
-  iat: number;
-};
-export type CardPayload = UnsignedCard | SignedCard;
+export type {
+  CardNumbers,
+  UnsignedCard,
+  SignedCard,
+  CardPayload,
+} from "./token/types";
+
 export type WinPattern = "line" | "column" | "diagonal" | "corners" | "full";
 export type Point = { x: number; y: number };
 export type Stroke = {
@@ -33,7 +24,7 @@ export type Game = {
 };
 export type Player = {
   v: 1;
-  card: UnsignedCard;
+  card: import("./token/types").UnsignedCard;
   color: string;
   marks: Marks;
   strokes: Stroke[];

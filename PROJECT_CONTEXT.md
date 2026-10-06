@@ -2,16 +2,18 @@
 
 Web app mobile-first e futuro Telegram Mini App de Bingo de 75 pedras. Jogador recebe papel digital, marca números com canetas e desenha livremente; organizador sorteia e valida cartelas. Referências fornecidas pelo usuário em `docs/design-reference/` (não renderizar moldura de smartphone).
 
-Stack: Next.js App Router, React, TypeScript strict, Tailwind, CSS variables; deploy alvo Vercel. Canvas nativo/Pointer Events, hooks e localStorage; sem banco nesta fase.
+Stack: Next.js App Router, React 19, TypeScript strict, Tailwind 4, CSS variables; deploy alvo Vercel. Canvas nativo/Pointer Events, hooks e localStorage; sem banco nesta fase.
 
-Rotas: `/` apresentação, `/play` jogador, `/admin` organizador, `/api/cards/create` e `/api/cards/verify` fronteira de confiança. Domínio independente em `lib/bingo`, armazenamento em `lib/storage`, Telegram isolado em `lib/telegram`.
+Rotas: `/` apresentação, `/play` jogador, `/admin` organizador, `/api/cards/signed`, `/api/cards/create`, `/api/cards/verify`, `/api/auth/telegram` fronteira de confiança. Domínio independente em `lib/bingo`, armazenamento em `lib/storage`, Telegram isolado em `lib/telegram`.
 
 Cartelas 5×5, números em ordem de linhas, centro `null` (FREE). Colunas B 1–15, I 16–30, N 31–45, G 46–60, O 61–75. Vitória inicial por linha horizontal. Números reais e pedras são separados da arte. Não validar pela tinta.
 
-`BNG1U.<payload>`: cartela livre, criada no cliente; sempre exibir não verificada. `BNG1S.<payload>.<signature>`: HMAC-SHA256 apenas no servidor com `BINGO_SIGNING_SECRET`; ausência de configuração nunca derruba o modo local. Identidade Telegram exige verificação server-side de initData; nunca confiar em initDataUnsafe. Sem segredo fallback.
+Confiança criptográfica e tokens:
+- `BNG1U.<payload>`: cartela unsigned criada no cliente para partidas locais; sempre exibida como "Cartela não verificada".
+- `BNG1S.<payload>.<signature>`: cartela assinada exclusivamente pelo servidor via HMAC-SHA256 (`BINGO_SIGNING_SECRET`, ≥32 chars). Mensagem assinada vincula prefixo e payload canônico Base64URL. Números e ID de cartela gerados pela autoridade do servidor.
+- Autenticação Telegram: verificação server-side estrita de HMAC do `initData` com `TELEGRAM_BOT_TOKEN`, verificação de freshness/replay via `auth_date` e extração de identidade segura. `initDataUnsafe` no client é apenas estético/UX transitório.
+- Sem secrets configurados, o modo local BNG1U permanece funcional e a criação/verificação de BNG1S retorna erro controlado 503 sem segredo temporário silencioso.
 
-Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marca irregular translúcida, sete canetas em estojo físico, botões táteis; respeitar safe areas e reduced motion. Assets procedurais locais, fontes com licença.
+Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marcas de tinta com variação orgânica determinística, estojo físico de sete canetas, botões táteis, diálogo modal integrado de confirmação em papel; safe areas e reduced motion.
 
-MVP implementado: jogador, admin, canvas, persistência, tokens unsigned, assinatura HMAC server-side e adapter Telegram. Todas as cinco regras comuns já disponíveis; padrão linha horizontal. Assinatura confirma origem/identidade, com escopo `local`, sem autoridade de partida remota. Emissão Telegram tem endpoint preparado, sem UI nem SDK carregado ainda. Detalhes e resultados reais em `docs/HANDOFF.md`.
-
-Validação em 2026-10-06: lint, typecheck, 22 testes e build passaram. Smoke passou para o fluxo local e 15 layouts móveis sem overflow; capturas em `docs/qa/`. Testes físicos e integração real Telegram ainda pendentes. `docs/HANDOFF.md` registra commits, configuração e próxima etapa.
+Validação em 2026-10-06: lint, typecheck, 34 testes e build passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.

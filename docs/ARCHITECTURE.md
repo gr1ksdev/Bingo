@@ -4,18 +4,31 @@
 
 ```text
 app/                   páginas App Router, layout, CSS e Route Handlers
+  api/
+    auth/telegram/     validação de sessão/identidade Telegram Mini Apps
+    cards/signed/      emissão de cartelas confiáveis BNG1S
+    cards/create/      emissão compatível Telegram
+    cards/verify/      verificação de autenticidade e integridade
 components/bingo/      jogador, papel, células, canetas, canvas, bolas
 components/admin/      sorteio, histórico, configurações, validador
-components/ui/         ícones SVG
-lib/bingo/             geração, sorteio, regras, tokens, tipos
+components/ui/         ícones SVG procedurais
+lib/bingo/             domínio puro (geração, sorteio, validação de regras)
+  token/               camada modular de tokens
+    types.ts           tipagem estrita de UnsignedCard, SignedCard e resultados
+    base64url.ts       codificação canônica UTF-8 sem padding
+    unsigned.ts        validação e codificação de BNG1U
+    parser.ts          parsing seguro e identificação de formato
+    signed.server.ts   server-only: HMAC-SHA256, signCard, verifyCard, verifyToken
 lib/storage/           stores versionados, validação de dados persistidos
-lib/server/            HMAC, initData Telegram e leitura limitada de requests
-lib/telegram/          adapter do SDK (opcional)
-lib/drawing.ts         limites de arte vetorial
-public/                texturas SVG procedurais
-scripts/               smoke browser opcional
-tests/                testes de domínio/segurança/Route Handlers
-docs/                 continuidade, decisões e referências
+lib/server/            handlers server-side, HMAC, requisições limitadas
+lib/telegram/          camada de integração Telegram
+    types.ts           tipos de usuário e WebApp
+    client.ts          adapter client, detecção de ambiente, initData
+    auth.server.ts     server-only: validação oficial de HMAC e replay freshness
+lib/drawing.ts         orçamento e limites de arte vetorial
+public/                texturas SVG e ícones procedurais
+tests/                 testes automatizados de domínio, tokens, segurança e rotas
+docs/                  continuidade, decisões e referências
 ```
 
 ## Fluxo de dados
@@ -38,11 +51,11 @@ Cartela row-major com 25 posições. Índice 12 é `null`, livre automaticamente
 
 ## Arte
 
-Marcas: dicionário índice → cor. CSS produz carimbo irregular com rotação/escala determinísticas, tinta translúcida e número acima da marca.
+Marcas: dicionário índice → cor. CSS produz carimbo irregular com rotação/escala determinísticas baseadas em `(index, number)`, tinta translúcida e número escuro perfeitamente legível acima da mancha.
 
-Rabiscos: `Stroke { id, color, width, tool, points }`, com coordenadas e espessura normalizadas. Canvas transparente sobre a superfície da cartela; Pointer Events, captura do ponteiro e cancelamento. Reconstituição no resize e devicePixelRatio; inversão da rotação do papel mantém tinta sob o ponteiro. Borracha usa `destination-out` só no canvas. Desfazer remove o último stroke, incluindo strokes de borracha.
+Rabiscos: `Stroke { id, color, width, tool, points }`, com coordenadas e espessura normalizadas. Canvas transparente sobre a superfície da cartela com `contain: paint`; Pointer Events, captura do ponteiro e cancelamento. Reconstituição no resize e devicePixelRatio com limpeza de buffer via matriz identidade; inversão da rotação do papel calculada no início do traço mantém tinta sob o ponteiro com 60fps sem layout thrashing. Borracha usa `destination-out` só no canvas. Desfazer remove o último stroke, incluindo strokes de borracha.
 
-Limites: 600 strokes, 3000 pontos por stroke, 30000 pontos totais. Coordenadas arredondadas a quatro casas decimais para reduzir armazenamento. Limpar desenhos, limpar marcas e trocar cartela são ações distintas; ações destrutivas pedem confirmação nativa.
+Limites: 600 strokes, 3000 pontos por stroke, 30000 pontos totais. Coordenadas arredondadas a quatro casas decimais para reduzir armazenamento. Limpar desenhos, limpar marcas e trocar cartela são ações distintas protegidas por diálogo modal tátil de confirmação em papel/madeira, sem caixas de diálogo nativas do navegador.
 
 ## Persistência
 
@@ -55,25 +68,52 @@ Eventos `storage` acompanham mudanças em outras abas. O estado pertence à orig
 
 ## Fronteira client/server e tokens
 
-`BNG1U.<payload>`: Base64URL canônico sem padding, JSON UTF-8, versão 1. `{ v, name, nums, createdAt }` usa data em milissegundos. A UI sempre avisa “Cartela não verificada”. Parser verifica formato, versão, limites e números; não autentica autoria.
+```mermaid
+flowchart TD
+  UserApp["Telegram Mini App / Browser"] -->|"initData + name"| ServerRoute["POST /api/cards/signed"]
+  ServerRoute -->|"1. Validar HMAC e auth_date"| TgAuth["lib/telegram/auth.server.ts"]
+  TgAuth -->|"TelegramUser verificado"| ServerRoute
+  ServerRoute -->|"2. Gerar números confiáveis"| GenCard["generateCard() (server authority)"]
+  GenCard -->|"3. Montar payload estruturado"| Signer["lib/bingo/token/signed.server.ts"]
+  Signer -->|"4. HMAC-SHA256 com BINGO_SIGNING_SECRET"| Token["BNG1S.<payload>.<sig>"]
+  Token -->|"5. Retornar token confiável"| UserApp
+  
+  Validator["Admin / Validador"] -->|"token BNG1S"| VerifyRoute["POST /api/cards/verify"]
+  VerifyRoute -->|"timingSafeEqual(expected, actual)"| Signer
+  Signer -->|"✓ CARTELA VERIFICADA"| Validator
+```
 
-`BNG1S.<payload>.<signature>`: `{ v, uid, gid, cid, nums, iat }`, com `iat` em segundos. HMAC-SHA256 assina a mensagem completa `BNG1S.<payload>` (inclui prefixo). Verificação com tamanho fixo, Base64URL canônico e comparação constant-time no servidor.
+### BNG1U — Cartela Unsigned
+`BNG1U.<payload>`: Base64URL canônico sem padding, JSON UTF-8, versão 1. `{ v, name, nums, createdAt }` usa data em milissegundos.
+- Criada no cliente para jogos locais e informais.
+- A UI sempre avisa claramente: `⚠ CARTELA NÃO VERIFICADA`.
+- Parser confere estrutura, limites e números; não autentica autoria nem garante contra adulteração.
 
-`lib/server/*` importa `server-only`. Segredo em `BINGO_SIGNING_SECRET`, mínimo 32 caracteres, sem fallback. Nunca usar `NEXT_PUBLIC_`. Route Handlers Node.js, respostas `no-store`, corpos limitados a 12000 bytes reais, incluindo transferências sem Content-Length.
+### BNG1S — Cartela Signed
+`BNG1S.<payload>.<signature>`: `{ v: 1, cid, gid, nums, iat, uid?, name? }`, com `iat` em segundos Unix.
+- Criada exclusivamente pelo servidor.
+- Mensagem assinada: `BNG1S.<payload>` (o prefixo é explicitamente vinculado à assinatura).
+- Assinatura: HMAC-SHA256 (`BINGO_SIGNING_SECRET`, ≥32 caracteres de alta entropia).
+- Verificação segura: `timingSafeEqual` com tamanho fixo (32 bytes = 43 caracteres Base64URL). Qualquer alteração de um único byte no payload ou assinatura invalida o token.
+- Números da cartela são gerados estritamente pelo servidor (`nums: generateCard()`); o cliente nunca pode impor números para serem assinados.
 
-- `POST /api/cards/create`: exige segredo + token de bot + initData validado. Gera números/uid/cid server-side; escopo `gid: local`, sem aceitar identidade, números ou ID remoto do browser.
-- `POST /api/cards/verify`: exige segredo e valida assinatura. Admin só exibe verificação após sucesso desse endpoint.
+### Endpoints de Confiança
+`lib/server/*` e `*.server.ts` importam `server-only`. Segredo em `BINGO_SIGNING_SECRET`, sem fallback. Nunca usar `NEXT_PUBLIC_`. Respostas com cabeçalho `Cache-Control: no-store`.
 
-Sem configuração, retornam HTTP 503 sem derrubar o app. A assinatura comprova origem e identidade, não inscrição em uma partida remota nem autoridade das pedras locais. Banco, regras de emissão, autorização de organizador e claims precisam existir antes do multiplayer.
+- `POST /api/cards/signed`: emite cartelas BNG1S. Se autenticado via Telegram, extrai `uid` e `name` do initData validado. Se fora do Telegram em dev local, usa `uid: "dev-local"`.
+- `POST /api/cards/verify`: verifica tokens BNG1S ou BNG1U. Retorna resposta estruturada distinguindo: signed válido, unsigned válido, assinatura inválida, payload inválido e formato malformado.
+- `POST /api/auth/telegram`: valida initData com `TELEGRAM_BOT_TOKEN` e retorna dados públicos do usuário autenticado sem vazar material criptográfico.
 
-## Telegram
+Sem secrets configurados, os endpoints retornam HTTP 503 com erro controlado sem derrubar o modo local BNG1U.
 
-Adapter opcional em `lib/telegram/adapter.ts`: ready/expand, `getInitData`, haptic opt-in. Não usa `initDataUnsafe`; funciona sem SDK. O SDK oficial ainda não é carregado e a UI de emissão ainda não é ligada ao endpoint.
+## Telegram Mini App
 
-O servidor valida HMAC de initData conforme Telegram, rejeita campos duplicados, data muito antiga (>300s) ou futura (>30s), e extrai uid só depois da verificação. initData pode ser reutilizado durante essa janela: quotas/idempotência e sessão persistente pertencem à próxima fase.
+- `lib/telegram/client.ts`: adapter client-side que detecta ambiente (`isTelegramEnvironment()`), obtém `getInitData()`, aciona haptics táteis e expõe `getUnsafeDisplayUser()`.
+- **Atenção:** `initDataUnsafe` é utilizado exclusivamente para exibição transitória de UX (ex: nome local no topo da mesa). Nunca é confiado para autorização ou emissão.
+- `lib/telegram/auth.server.ts`: validação criptográfica estrita do HMAC de initData conforme a documentação oficial do Telegram. Chave gerada via HMAC-SHA256 de `"WebAppData"` com `TELEGRAM_BOT_TOKEN`. Rejeita campos duplicados e verifica janela de validade (`auth_date` com margem de 30s para clock skew e expiração de 300s).
 
 ## Deploy e QA
 
-Next.js na Vercel; nada depende de filesystem persistente ou memória de função serverless. Fontes locais com licença OFL e texturas originais. `npm ci` reproduz dependências fixadas no lockfile.
+Next.js na Vercel; nada depende de filesystem persistente ou memória de função serverless. Fontes locais com licença OFL e texturas procedurais originais.
 
-Checks: lint, typecheck, testes Node/tsx e build. Smoke opcional com Playwright externo testa interações, persistência e layouts; instruções em `docs/QA.md`. Acesso real no Telegram e testes em aparelhos Safari/Android seguem como próximos passos.
+Checks: lint, typecheck, 34 testes automatizados e build de produção.

@@ -10,6 +10,7 @@ export type IconName =
   | "copy"
   | "arrow"
   | "check"
+  | "close"
   | "star"
   | "warning"
   | "heart"
@@ -26,6 +27,7 @@ const paths: Record<IconName, string> = {
   copy: "M8 8h12v13H8zM16 8V3H3v13h5",
   arrow: "M3 12h18m-7-7 7 7-7 7",
   check: "m4 12 5 5L20 6",
+  close: "m18 6-12 12M6 6l12 12",
   star: "m12 2 3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1z",
   warning: "m12 3 10 18H2L12 3zm0 5v6m0 3h.01",
   heart: "M12 21 3 12a5 5 0 0 1 9-7 5 5 0 0 1 9 7z",

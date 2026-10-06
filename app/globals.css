@@ -806,6 +806,12 @@ textarea {
 .verified-label {
   color: var(--green);
 }
+.invalid-label {
+  color: var(--red);
+  font-weight: 800;
+  font-size: 13px;
+  margin: 12px 0 5px;
+}
 .help-text {
   font-size: 12px;
   line-height: 1.6;

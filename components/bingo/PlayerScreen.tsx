@@ -25,6 +25,9 @@ export function PlayerScreen() {
   const [won, setWon] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [signedToken, setSignedToken] = useState<string | null>(null);
+  const [signedLoading, setSignedLoading] = useState(false);
+  const [signedNotice, setSignedNotice] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +64,8 @@ export function PlayerScreen() {
 
   const { card, color, marks, strokes } = player.value;
   const { drawn, pattern } = game.value;
-  const token = encodeUnsigned(card);
+  const unsignedToken = encodeUnsigned(card);
+  const activeToken = signedToken ?? unsignedToken;
 
   const hasMarks = Object.keys(marks).length > 0;
   const hasStrokes = strokes.length > 0;
@@ -80,6 +84,8 @@ export function PlayerScreen() {
 
   const handleRequestSwap = () => {
     if (!hasMarks && !hasStrokes) {
+      setSignedToken(null);
+      setSignedNotice("");
       playerStore.update((p) => ({
         ...p,
         card: createUnsignedCard(p.card.name),
@@ -94,6 +100,8 @@ export function PlayerScreen() {
 
   const handleConfirmAction = () => {
     if (confirmAction === "swap") {
+      setSignedToken(null);
+      setSignedNotice("");
       playerStore.update((p) => ({
         ...p,
         card: createUnsignedCard(p.card.name),
@@ -108,6 +116,47 @@ export function PlayerScreen() {
     }
     setConfirmAction(null);
   };
+
+  async function requestSignedCard() {
+    setSignedLoading(true);
+    setSignedNotice("");
+    try {
+      const initData = telegram.getInitData();
+      const response = await fetch("/api/cards/signed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData, name: card.name }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.token) {
+        throw new Error(
+          data.error?.message || data.error || "Não foi possível obter cartela assinada.",
+        );
+      }
+
+      setSignedToken(data.token);
+      setSignedNotice("Cartela verificada emitida pelo servidor!");
+      if (data.card?.nums) {
+        playerStore.update((p) => ({
+          ...p,
+          card: {
+            ...p.card,
+            nums: data.card.nums,
+          },
+          marks: {},
+          strokes: [],
+        }));
+      }
+    } catch (err) {
+      setSignedNotice(
+        err instanceof Error ? err.message : "Erro ao solicitar cartela assinada.",
+      );
+    } finally {
+      setSignedLoading(false);
+    }
+  }
 
   function callBingo() {
     const result = validateBingo(card.nums, drawn, pattern);
@@ -275,21 +324,54 @@ export function PlayerScreen() {
             playerStore.update((p) => ({ ...p, card: { ...p.card, name } }));
           }}
         />
-        <p className="trust-label">
-          <Icon name="warning" width={16} height={16} className="inline-icon" />{" "}
-          Cartela não verificada
-        </p>
-        <p className="help-text">
-          Criada neste navegador. O código permite conferir os números, mas não
-          comprova a origem da cartela.
-        </p>
+
+        {signedToken ? (
+          <>
+            <p className="verified-label">
+              <Icon name="check" width={16} height={16} className="inline-icon" />{" "}
+              Cartela verificada (BNG1S)
+            </p>
+            <p className="help-text">
+              Emitida e assinada pelo servidor com garantia de autenticidade (HMAC-SHA256).
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="trust-label">
+              <Icon name="warning" width={16} height={16} className="inline-icon" />{" "}
+              Cartela não verificada (BNG1U)
+            </p>
+            <p className="help-text">
+              Criada neste navegador. O código permite conferir os números, mas não
+              comprova a origem da cartela.
+            </p>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={requestSignedCard}
+              disabled={signedLoading}
+              style={{ marginTop: "4px", marginBottom: "8px" }}
+            >
+              <Icon name="stamp" />
+              {signedLoading
+                ? "Solicitando cartela…"
+                : "Solicitar cartela verificada (BNG1S)"}
+            </button>
+            {signedNotice && (
+              <p role="status" className="help-text" style={{ fontStyle: "italic" }}>
+                {signedNotice}
+              </p>
+            )}
+          </>
+        )}
+
         <label htmlFor="card-token">Código da cartela</label>
-        <textarea id="card-token" readOnly value={token} rows={3} />
+        <textarea id="card-token" readOnly value={activeToken} rows={3} />
         <button
           className="secondary-button"
           onClick={async () => {
             try {
-              await navigator.clipboard.writeText(token);
+              await navigator.clipboard.writeText(activeToken);
               setCopyStatus("Código copiado!");
             } catch {
               setCopyStatus("Selecione o código acima e copie manualmente.");
@@ -301,9 +383,6 @@ export function PlayerScreen() {
         </button>
         <p role="status" className="help-text">
           {copyStatus}
-        </p>
-        <p className="help-text">
-          Cartela verificada: integração Telegram em preparação.
         </p>
       </details>
       <p className="footer-note">Feito de papel, tinta e bons momentos.</p>

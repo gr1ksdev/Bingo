@@ -12,17 +12,15 @@
 - [x] Adapter Telegram e fronteira de autenticação
 - [x] lint, typecheck, tests, build
 - [x] Revisão responsiva e handoff final
-- [x] Polimento e robustez mobile (artefato visual de faixa beige corrigido, variação orgânica estável de marcas, confirmação tátil de troca de cartela sem window.confirm, PWA readiness, affordance do validador e estado final 75/75 no admin)
+- [x] Polimento e robustez mobile (faixa horizontal eliminada, marcas orgânicas determinísticas, modal tátil de confirmação, PWA readiness)
+- [x] Cartelas assinadas BNG1S + Autenticação Telegram Mini App server-side (HMAC-SHA256, rotas `/api/cards/signed`, `/api/cards/verify`, `/api/auth/telegram`, validação oficial Telegram, proteção replay auth_date, validador admin com 3 estados táteis e 34 testes automatizados)
 
 ## Próxima fase
 
-- [ ] Testar aparelhos reais Safari/iOS, Android e WebView Telegram
-- [ ] Configurar bot, SDK e UI de emissão signed
-- [ ] Banco/salas e autorização do organizador
-- [ ] Emissão limitada por partida, quotas e idempotência
-- [ ] Claims remotos
-- [ ] Arquivo de partidas anteriores
-- [ ] Padrões personalizados
-- [ ] Áudio/haptics opt-in
-- [ ] Atualizar cadeia de lint quando a correção upstream do advisory estiver disponível
-- [ ] Deploy Vercel após configuração da hospedagem
+- [ ] Testar em aparelhos físicos Safari/iOS, Android e WebView do Telegram com bot real registrado
+- [ ] Banco de dados relacional / salas multiplayer persistentes
+- [ ] Autorização do organizador e quotas de emissão por partida
+- [ ] Claims remotos e registro de partidas arquivadas
+- [ ] Padrões de vitória personalizados
+- [ ] Áudio/haptics opt-in adicionais
+- [ ] Deploy na Vercel com secrets de produção
