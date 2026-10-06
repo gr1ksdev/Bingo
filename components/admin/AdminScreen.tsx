@@ -9,6 +9,7 @@ import { DrawPanel } from "./DrawPanel";
 import { DrawHistory } from "./DrawHistory";
 import { CardValidator } from "./CardValidator";
 import { Icon } from "@/components/ui/Icon";
+import { telegram } from "@/lib/telegram/adapter";
 export function AdminScreen() {
   const game = gameStore.useValue();
   if (!game)
@@ -34,12 +35,13 @@ export function AdminScreen() {
       )}
       <DrawPanel
         drawn={drawn}
-        onDraw={() =>
+        onDraw={() => {
+          telegram.haptic.impact("light");
           gameStore.update((g) => {
             const next = drawBall(g.drawn);
             return next === null ? g : { ...g, drawn: [...g.drawn, next] };
-          })
-        }
+          });
+        }}
       />
       <RecentBalls drawn={drawn} />
       <DrawHistory drawn={drawn} />

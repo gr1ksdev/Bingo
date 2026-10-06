@@ -14,7 +14,19 @@ import { DrawingCanvas } from "./DrawingCanvas";
 import { Icon } from "@/components/ui/Icon";
 import { MAX_STROKES, MAX_DRAWING_POINTS } from "@/lib/drawing";
 
-type ConfirmAction = "swap" | "clear-marks" | "clear-drawings" | null;
+type ConfirmAction =
+  | "swap"
+  | "clear-marks"
+  | "clear-drawings"
+  | "request-signed"
+  | null;
+
+type IdentityState =
+  | "browser"
+  | "telegram-unverified"
+  | "telegram-verified"
+  | "telegram-invalid"
+  | "service-unavailable";
 
 export function PlayerScreen() {
   const player = playerStore.useValue();
@@ -28,11 +40,56 @@ export function PlayerScreen() {
   const [signedToken, setSignedToken] = useState<string | null>(null);
   const [signedLoading, setSignedLoading] = useState(false);
   const [signedNotice, setSignedNotice] = useState("");
+  const [identityState, setIdentityState] = useState<IdentityState>("browser");
+  const [verifiedUser, setVerifiedUser] = useState<{
+    id: number;
+    firstName: string;
+  } | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const isDev = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     telegram.init();
+    if (!telegram.isTelegramEnvironment()) return;
+
+    let active = true;
+    const initData = telegram.getInitData();
+    fetch("/api/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    })
+      .then(async (res) => {
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            setIdentityState("telegram-verified");
+            setVerifiedUser(data.user);
+            return;
+          }
+        }
+        if (res.status === 503) {
+          setIdentityState("service-unavailable");
+        } else {
+          setIdentityState("telegram-invalid");
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully on network error
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const isTelegram = telegram.isTelegramEnvironment();
+  const effectiveIdentity: IdentityState =
+    identityState === "browser" && isTelegram
+      ? "telegram-unverified"
+      : identityState;
 
   useEffect(() => {
     if (message)
@@ -98,6 +155,74 @@ export function PlayerScreen() {
     }
   };
 
+  const handleRequestSignedClick = () => {
+    if (hasMarks || hasStrokes) {
+      setConfirmAction("request-signed");
+    } else {
+      executeRequestSignedCard();
+    }
+  };
+
+  const executeRequestSignedCard = async () => {
+    setSignedLoading(true);
+    setSignedNotice("");
+    try {
+      const initData = telegram.getInitData();
+      const response = await fetch("/api/cards/signed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData, name: card.name }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.token) {
+        if (response.status === 401) {
+          throw new Error("Abra pelo Telegram para emitir cartela verificada.");
+        }
+        if (response.status === 503) {
+          throw new Error(
+            "Cartelas verificadas não estão disponíveis neste ambiente.",
+          );
+        }
+        throw new Error(
+          data.error?.message ||
+            data.error ||
+            "Não foi possível obter cartela assinada.",
+        );
+      }
+
+      setSignedToken(data.token);
+      setSignedNotice("✓ Cartela verificada emitida pelo servidor!");
+      if (data.card?.nums) {
+        playerStore.update((p) => ({
+          ...p,
+          card: {
+            ...p.card,
+            nums: data.card.nums,
+            name: data.card.name || p.card.name,
+          },
+          marks: {},
+          strokes: [],
+        }));
+      }
+      if (typeof data.card?.uid === "number" && data.card?.name) {
+        setVerifiedUser({ id: data.card.uid, firstName: data.card.name });
+        setIdentityState("telegram-verified");
+      }
+      telegram.haptic.notification("success");
+    } catch (err) {
+      telegram.haptic.notification("warning");
+      setSignedNotice(
+        err instanceof Error
+          ? err.message
+          : "Erro ao solicitar cartela assinada.",
+      );
+    } finally {
+      setSignedLoading(false);
+    }
+  };
+
   const handleConfirmAction = () => {
     if (confirmAction === "swap") {
       setSignedToken(null);
@@ -113,54 +238,20 @@ export function PlayerScreen() {
       playerStore.update((p) => ({ ...p, marks: {} }));
     } else if (confirmAction === "clear-drawings") {
       playerStore.update((p) => ({ ...p, strokes: [] }));
+    } else if (confirmAction === "request-signed") {
+      executeRequestSignedCard();
     }
     setConfirmAction(null);
   };
 
-  async function requestSignedCard() {
-    setSignedLoading(true);
-    setSignedNotice("");
-    try {
-      const initData = telegram.getInitData();
-      const response = await fetch("/api/cards/signed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData, name: card.name }),
-        signal: AbortSignal.timeout(10000),
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.token) {
-        throw new Error(
-          data.error?.message || data.error || "Não foi possível obter cartela assinada.",
-        );
-      }
-
-      setSignedToken(data.token);
-      setSignedNotice("Cartela verificada emitida pelo servidor!");
-      if (data.card?.nums) {
-        playerStore.update((p) => ({
-          ...p,
-          card: {
-            ...p.card,
-            nums: data.card.nums,
-          },
-          marks: {},
-          strokes: [],
-        }));
-      }
-    } catch (err) {
-      setSignedNotice(
-        err instanceof Error ? err.message : "Erro ao solicitar cartela assinada.",
-      );
-    } finally {
-      setSignedLoading(false);
-    }
-  }
-
   function callBingo() {
     const result = validateBingo(card.nums, drawn, pattern);
     setWon(result.won);
+    if (result.won) {
+      telegram.haptic.notification("success");
+    } else {
+      telegram.haptic.impact("light");
+    }
     setMessage(
       result.won
         ? "Bingo! Sua combinação está completa. Que sorte bonita!"
@@ -172,7 +263,11 @@ export function PlayerScreen() {
     <main className="app-shell player-shell">
       <BingoHeader
         title="Sua mesa de Bingo"
-        subtitle={`Partida #${game.value.id}`}
+        subtitle={
+          verifiedUser
+            ? `Partida #${game.value.id} · Jogando como ${verifiedUser.firstName}`
+            : `Partida #${game.value.id}`
+        }
       />
       <div className="last-ball-label paper-strip">
         <span>Última pedra:</span>
@@ -191,13 +286,15 @@ export function PlayerScreen() {
         marks={marks}
         onMark={
           mode === "stamp"
-            ? (i) =>
+            ? (i) => {
+                telegram.haptic.impact("light");
                 playerStore.update((p) => {
                   const nextMarks = { ...p.marks };
                   if (nextMarks[i]) delete nextMarks[i];
                   else nextMarks[i] = p.color;
                   return { ...p, marks: nextMarks };
-                })
+                });
+              }
             : undefined
         }
         caption={
@@ -328,37 +425,81 @@ export function PlayerScreen() {
         {signedToken ? (
           <>
             <p className="verified-label">
-              <Icon name="check" width={16} height={16} className="inline-icon" />{" "}
+              <Icon
+                name="check"
+                width={16}
+                height={16}
+                className="inline-icon"
+              />{" "}
               Cartela verificada (BNG1S)
             </p>
+            {verifiedUser && (
+              <p className="help-text" style={{ fontWeight: 600 }}>
+                Identidade Telegram confirmada: {verifiedUser.firstName}
+              </p>
+            )}
             <p className="help-text">
-              Emitida e assinada pelo servidor com garantia de autenticidade (HMAC-SHA256).
+              Emitida e assinada pelo servidor com garantia de autenticidade
+              (HMAC-SHA256).
             </p>
           </>
         ) : (
           <>
             <p className="trust-label">
-              <Icon name="warning" width={16} height={16} className="inline-icon" />{" "}
+              <Icon
+                name="warning"
+                width={16}
+                height={16}
+                className="inline-icon"
+              />{" "}
               Cartela não verificada (BNG1U)
             </p>
             <p className="help-text">
-              Criada neste navegador. O código permite conferir os números, mas não
-              comprova a origem da cartela.
+              Criada neste navegador. O código permite conferir os números, mas
+              não comprova a origem da cartela.
             </p>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={requestSignedCard}
-              disabled={signedLoading}
-              style={{ marginTop: "4px", marginBottom: "8px" }}
-            >
-              <Icon name="stamp" />
-              {signedLoading
-                ? "Solicitando cartela…"
-                : "Solicitar cartela verificada (BNG1S)"}
-            </button>
+
+            {effectiveIdentity === "browser" && !isDev ? (
+              <p
+                className="help-text"
+                style={{ fontStyle: "italic", marginTop: "6px" }}
+              >
+                Abra pelo Telegram para gerar uma cartela verificada.
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={handleRequestSignedClick}
+                  disabled={signedLoading}
+                  style={{ marginTop: "4px", marginBottom: "8px" }}
+                >
+                  <Icon name="stamp" />
+                  {signedLoading
+                    ? "Solicitando cartela…"
+                    : effectiveIdentity === "browser" && isDev
+                      ? "[DEV] Solicitar cartela de teste (BNG1S)"
+                      : "Solicitar cartela verificada (BNG1S)"}
+                </button>
+                {effectiveIdentity === "browser" && isDev && (
+                  <p
+                    className="help-text"
+                    style={{ fontSize: "0.75rem", opacity: 0.8 }}
+                  >
+                    Ambiente de desenvolvimento local ativo. Em produção,
+                    cartelas BNG1S exigem autenticação do Telegram.
+                  </p>
+                )}
+              </>
+            )}
+
             {signedNotice && (
-              <p role="status" className="help-text" style={{ fontStyle: "italic" }}>
+              <p
+                role="status"
+                className="help-text"
+                style={{ fontStyle: "italic" }}
+              >
                 {signedNotice}
               </p>
             )}
@@ -407,6 +548,8 @@ export function PlayerScreen() {
                 {confirmAction === "swap" && "Trocar de cartela?"}
                 {confirmAction === "clear-marks" && "Limpar marcações?"}
                 {confirmAction === "clear-drawings" && "Apagar rabiscos?"}
+                {confirmAction === "request-signed" &&
+                  "Substituir por cartela verificada?"}
               </h3>
             </div>
             <p id="dialog-desc" className="dialog-message">
@@ -416,6 +559,8 @@ export function PlayerScreen() {
                 "Todas as marcas de tinta serão apagadas. Os números da cartela e seus rabiscos a caneta serão preservados."}
               {confirmAction === "clear-drawings" &&
                 "Todos os traços e desenhos serão removidos do papel. Os números e suas marcações de tinta continuarão intactos."}
+              {confirmAction === "request-signed" &&
+                "Sua cartela atual, todas as manchas de tinta e seus rabiscos serão substituídos pela nova cartela verificada emitida pelo servidor. Deseja continuar?"}
             </p>
             <div className="dialog-actions">
               <button
@@ -423,7 +568,9 @@ export function PlayerScreen() {
                 className="dialog-button-cancel"
                 onClick={() => setConfirmAction(null)}
               >
-                {confirmAction === "swap" ? "Manter cartela" : "Cancelar"}
+                {confirmAction === "swap" || confirmAction === "request-signed"
+                  ? "Manter cartela"
+                  : "Cancelar"}
               </button>
               <button
                 type="button"
@@ -433,6 +580,7 @@ export function PlayerScreen() {
                 {confirmAction === "swap" && "Sim, trocar"}
                 {confirmAction === "clear-marks" && "Limpar marcas"}
                 {confirmAction === "clear-drawings" && "Apagar rabiscos"}
+                {confirmAction === "request-signed" && "Sim, substituir"}
               </button>
             </div>
           </div>

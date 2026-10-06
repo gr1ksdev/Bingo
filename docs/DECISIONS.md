@@ -43,3 +43,16 @@ Campos `uid` e `name` tornados opcionais para viabilizar desenvolvimento local e
 Protocolo oficial do Telegram implementado em `lib/telegram/auth.server.ts` com HMAC-SHA256 da string de checagem contra a chave derivada de `"WebAppData"` + `TELEGRAM_BOT_TOKEN`.
 `initDataUnsafe` no client é restrito estritamente a conveniências visuais de apresentação (UX).
 Mitigação de replay via `auth_date` com tolerância de 30s no futuro (clock skew) e expiração de 300s no passado. Nonces únicos e sessões persistentes com revogação serão adicionados na fase de banco de dados.
+
+## ADR-011 — Isolamento estrito entre Produção e Desenvolvimento (BNG1S)
+
+Em produção (`NODE_ENV === "production"`), a emissão de cartelas BNG1S via `POST /api/cards/signed` exige estritamente um `initData` do Telegram válido e criptograficamente verificado. Sem `initData`, a requisição é rejeitada com HTTP 401. A ausência de `TELEGRAM_BOT_TOKEN` em produção retorna HTTP 503. O mecanismo `uid: "dev-local"` é terminantemente bloqueado em produção, existindo apenas em desenvolvimento quando `NODE_ENV !== "production"`.
+
+## ADR-012 — Ordenação ASCII estrita e diagnóstico seguro (/api/health)
+
+A ordenação de chaves do Telegram `initData` utiliza exclusivamente comparação de code points ASCII `(a < b ? -1 : a > b ? 1 : 0)`, eliminando dependência de `localeCompare` do sistema operacional.
+O endpoint de diagnóstico `GET /api/health` retorna exclusivamente flags booleanas (`signingConfigured`, `telegramConfigured`) com cabeçalho `Cache-Control: no-store`, prevenindo vazamento de segredos em logs e inspeções.
+
+## ADR-013 — Estados de identidade do cliente, diálogo modal e progressive haptics
+
+O cliente adota estados explícitos de identidade (`browser`, `telegram-unverified`, `telegram-verified`, `telegram-invalid`, `service-unavailable`). A substituição de uma cartela BNG1U por BNG1S respeita o diálogo modal integrado em papel para prevenir perda acidental de marcações e desenhos. Haptic feedback utiliza progressive enhancement nas ações de marcação, conferência de pedras, BINGO e emissão de cartela assinada sem impacto em navegadores convencionais.

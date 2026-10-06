@@ -9,7 +9,9 @@ function getSdk(): TelegramWebApp | undefined {
 
 export function isTelegramEnvironment(): boolean {
   const sdk = getSdk();
-  return Boolean(sdk && typeof sdk.initData === "string" && sdk.initData.length > 0);
+  return Boolean(
+    sdk && typeof sdk.initData === "string" && sdk.initData.length > 0,
+  );
 }
 
 export function getInitData(): string {
@@ -18,7 +20,7 @@ export function getInitData(): string {
 
 /**
  * CAUTION: getUnsafeDisplayUser reads initDataUnsafe directly from client window.
- * This MUST ONLY be used for transient cosmetic UX (e.g. displaying player's name locally).
+ * This MUST ONLY be used for transient cosmetic UX (e.g. placeholder before server verification).
  * NEVER trust this value for authentication, authorization, or card issuing.
  * Real identity MUST ALWAYS be verified server-side via POST /api/auth/telegram or POST /api/cards/signed.
  */
@@ -37,17 +39,51 @@ export function getUnsafeDisplayUser(): TelegramUser | null {
   };
 }
 
+function impactHaptic(style: "light" | "medium" | "heavy" = "light"): void {
+  try {
+    getSdk()?.HapticFeedback?.impactOccurred(style);
+  } catch {
+    // progressive enhancement: no-op if unsupported
+  }
+}
+
+function notificationHaptic(type: "error" | "success" | "warning"): void {
+  try {
+    getSdk()?.HapticFeedback?.notificationOccurred(type);
+  } catch {
+    // progressive enhancement: no-op if unsupported
+  }
+}
+
+function selectionHaptic(): void {
+  try {
+    getSdk()?.HapticFeedback?.selectionChanged();
+  } catch {
+    // progressive enhancement: no-op if unsupported
+  }
+}
+
+const hapticApi = Object.assign(impactHaptic, {
+  impact: impactHaptic,
+  notification: notificationHaptic,
+  selection: selectionHaptic,
+});
+
 export const telegramClient = {
-  isAvailable: () => typeof window !== "undefined" && Boolean(window.Telegram?.WebApp),
+  isAvailable: () =>
+    typeof window !== "undefined" && Boolean(window.Telegram?.WebApp),
   isTelegramEnvironment,
   getInitData,
   getUnsafeDisplayUser,
   init: () => {
     const sdk = getSdk();
-    sdk?.ready?.();
-    sdk?.expand?.();
+    if (!sdk) return;
+    try {
+      sdk.ready?.();
+      sdk.expand?.();
+    } catch {
+      // progressive enhancement: no-op
+    }
   },
-  haptic: (style: "light" | "medium" | "heavy" = "light") => {
-    getSdk()?.HapticFeedback?.impactOccurred(style);
-  },
+  haptic: hapticApi,
 };

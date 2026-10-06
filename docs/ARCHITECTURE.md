@@ -6,9 +6,10 @@
 app/                   páginas App Router, layout, CSS e Route Handlers
   api/
     auth/telegram/     validação de sessão/identidade Telegram Mini Apps
-    cards/signed/      emissão de cartelas confiáveis BNG1S
+    cards/signed/      emissão autoritativa de cartelas BNG1S (exige Telegram em prod)
     cards/create/      emissão compatível Telegram
     cards/verify/      verificação de autenticidade e integridade
+    health/            diagnóstico seguro de configuração (sem vazamento de secrets)
 components/bingo/      jogador, papel, células, canetas, canvas, bolas
 components/admin/      sorteio, histórico, configurações, validador
 components/ui/         ícones SVG procedurais
@@ -22,13 +23,13 @@ lib/bingo/             domínio puro (geração, sorteio, validação de regras)
 lib/storage/           stores versionados, validação de dados persistidos
 lib/server/            handlers server-side, HMAC, requisições limitadas
 lib/telegram/          camada de integração Telegram
-    types.ts           tipos de usuário e WebApp
-    client.ts          adapter client, detecção de ambiente, initData
-    auth.server.ts     server-only: validação oficial de HMAC e replay freshness
+    types.ts           tipos de usuário, WebApp e opções de verificação
+    client.ts          adapter client, detecção de ambiente, lifecycle init, haptics
+    auth.server.ts     server-only: validação oficial de HMAC, ordenação ASCII e replay freshness
 lib/drawing.ts         orçamento e limites de arte vetorial
 public/                texturas SVG e ícones procedurais
-tests/                 testes automatizados de domínio, tokens, segurança e rotas
-docs/                  continuidade, decisões e referências
+tests/                 testes automatizados de domínio, tokens, segurança, rotas e Telegram
+docs/                  continuidade, decisões, guias de setup e deploy
 ```
 
 ## Fluxo de dados
@@ -55,7 +56,7 @@ Marcas: dicionário índice → cor. CSS produz carimbo irregular com rotação/
 
 Rabiscos: `Stroke { id, color, width, tool, points }`, com coordenadas e espessura normalizadas. Canvas transparente sobre a superfície da cartela com `contain: paint`; Pointer Events, captura do ponteiro e cancelamento. Reconstituição no resize e devicePixelRatio com limpeza de buffer via matriz identidade; inversão da rotação do papel calculada no início do traço mantém tinta sob o ponteiro com 60fps sem layout thrashing. Borracha usa `destination-out` só no canvas. Desfazer remove o último stroke, incluindo strokes de borracha.
 
-Limites: 600 strokes, 3000 pontos por stroke, 30000 pontos totais. Coordenadas arredondadas a quatro casas decimais para reduzir armazenamento. Limpar desenhos, limpar marcas e trocar cartela são ações distintas protegidas por diálogo modal tátil de confirmação em papel/madeira, sem caixas de diálogo nativas do navegador.
+Limites: 600 strokes, 3000 pontos por stroke, 30000 pontos totais. Coordenadas arredondadas a quatro casas decimais para reduzir armazenamento. Limpar desenhos, limpar marcas, trocar cartela e substituir por cartela verificada são ações distintas protegidas por diálogo modal tátil de confirmação em papel/madeira, sem caixas de diálogo nativas do navegador.
 
 ## Persistência
 
@@ -71,7 +72,7 @@ Eventos `storage` acompanham mudanças em outras abas. O estado pertence à orig
 ```mermaid
 flowchart TD
   UserApp["Telegram Mini App / Browser"] -->|"initData + name"| ServerRoute["POST /api/cards/signed"]
-  ServerRoute -->|"1. Validar HMAC e auth_date"| TgAuth["lib/telegram/auth.server.ts"]
+  ServerRoute -->|"1. Validar HMAC e auth_date (ASCII sort)"| TgAuth["lib/telegram/auth.server.ts"]
   TgAuth -->|"TelegramUser verificado"| ServerRoute
   ServerRoute -->|"2. Gerar números confiáveis"| GenCard["generateCard() (server authority)"]
   GenCard -->|"3. Montar payload estruturado"| Signer["lib/bingo/token/signed.server.ts"]
@@ -98,22 +99,24 @@ flowchart TD
 - Números da cartela são gerados estritamente pelo servidor (`nums: generateCard()`); o cliente nunca pode impor números para serem assinados.
 
 ### Endpoints de Confiança
-`lib/server/*` e `*.server.ts` importam `server-only`. Segredo em `BINGO_SIGNING_SECRET`, sem fallback. Nunca usar `NEXT_PUBLIC_`. Respostas com cabeçalho `Cache-Control: no-store`.
+`lib/server/*` e `*.server.ts` importam `server-only`. Segredo em `BINGO_SIGNING_SECRET`, sem fallback. Nunca usar `NEXT_PUBLIC_`. Respostas com cabeçalho `Cache-Control: no-store`. Limite de 12000 bytes e validação de Content-Type.
 
-- `POST /api/cards/signed`: emite cartelas BNG1S. Se autenticado via Telegram, extrai `uid` e `name` do initData validado. Se fora do Telegram em dev local, usa `uid: "dev-local"`.
+- `POST /api/cards/signed`: emite cartelas BNG1S.
+  - **Em Produção (`NODE_ENV === "production"`):** Exige obrigatoriamente `initData` do Telegram autenticado. Sem `initData`, retorna `401 UNAUTHORIZED`. O mecanismo `dev-local` é terminantemente proibido. Se `TELEGRAM_BOT_TOKEN` estiver ausente, retorna `503 SERVICE_UNAVAILABLE`.
+  - **Em Desenvolvimento (`NODE_ENV !== "production"`):** Permite teste local com `uid: "dev-local"` e identificação visual explicita como DEV.
 - `POST /api/cards/verify`: verifica tokens BNG1S ou BNG1U. Retorna resposta estruturada distinguindo: signed válido, unsigned válido, assinatura inválida, payload inválido e formato malformado.
 - `POST /api/auth/telegram`: valida initData com `TELEGRAM_BOT_TOKEN` e retorna dados públicos do usuário autenticado sem vazar material criptográfico.
-
-Sem secrets configurados, os endpoints retornam HTTP 503 com erro controlado sem derrubar o modo local BNG1U.
+- `GET /api/health`: endpoint seguro de diagnóstico de deploy. Retorna exclusivamente flags booleanas (`signingConfigured`, `telegramConfigured`) sem expor material confidencial.
 
 ## Telegram Mini App
 
-- `lib/telegram/client.ts`: adapter client-side que detecta ambiente (`isTelegramEnvironment()`), obtém `getInitData()`, aciona haptics táteis e expõe `getUnsafeDisplayUser()`.
-- **Atenção:** `initDataUnsafe` é utilizado exclusivamente para exibição transitória de UX (ex: nome local no topo da mesa). Nunca é confiado para autorização ou emissão.
-- `lib/telegram/auth.server.ts`: validação criptográfica estrita do HMAC de initData conforme a documentação oficial do Telegram. Chave gerada via HMAC-SHA256 de `"WebAppData"` com `TELEGRAM_BOT_TOKEN`. Rejeita campos duplicados e verifica janela de validade (`auth_date` com margem de 30s para clock skew e expiração de 300s).
+- `lib/telegram/client.ts`: adapter client-side que detecta ambiente (`isTelegramEnvironment()`), obtém `getInitData()`, aciona `ready()` e `expand()`, gerencia haptics táteis (`impact`, `notification`, `selection`) e expõe `getUnsafeDisplayUser()`.
+- **Atenção:** `initDataUnsafe` é utilizado exclusivamente para exibição transitória de UX (ex: placeholder do nome). Nunca é confiado para autorização ou emissão.
+- `lib/telegram/auth.server.ts`: validação criptográfica estrita do HMAC de initData conforme especificação oficial do Telegram. Ordenação determinística por code points ASCII `(a < b ? -1 : a > b ? 1 : 0)`, derivação de chave com `"WebAppData"` + `TELEGRAM_BOT_TOKEN`, verificação timing-safe e janela de validade (`auth_date` com margem de 30s para clock skew e expiração de 300s).
 
 ## Deploy e QA
 
 Next.js na Vercel; nada depende de filesystem persistente ou memória de função serverless. Fontes locais com licença OFL e texturas procedurais originais.
 
-Checks: lint, typecheck, 34 testes automatizados e build de produção.
+Checks: lint, typecheck, 44 testes automatizados e build de produção.
+Guias dedicados: `docs/TELEGRAM_SETUP.md` (BotFather) e `docs/DEPLOYMENT.md` (Vercel).

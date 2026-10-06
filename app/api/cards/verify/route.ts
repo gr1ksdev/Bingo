@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   if (!secret) {
     return json(
       {
+        ok: false,
         valid: false,
         verified: false,
         error: {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     if (typeof body.token !== "string" || !body.token.trim()) {
       return json(
         {
+          ok: false,
           valid: false,
           verified: false,
           error: {
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
 
     if (result.valid) {
       return json({
+        ok: true,
         valid: true,
         verified: result.signatureValid,
         kind: result.kind,
@@ -49,6 +52,7 @@ export async function POST(request: Request) {
 
     return json(
       {
+        ok: false,
         valid: false,
         verified: false,
         kind: result.kind,
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
       err instanceof Error ? err.message : "Código ou assinatura inválida.";
     return json(
       {
+        ok: false,
         valid: false,
         verified: false,
         error: {

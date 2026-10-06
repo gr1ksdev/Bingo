@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   if (!secret) {
     return json(
       {
+        ok: false,
         valid: false,
         error: {
           code: "SERVICE_UNAVAILABLE",
@@ -21,19 +22,38 @@ export async function POST(request: Request) {
     );
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+  // In production, TELEGRAM_BOT_TOKEN must be configured
+  if (isProduction && (!botToken || botToken.length < 10)) {
+    return json(
+      {
+        ok: false,
+        valid: false,
+        error: {
+          code: "SERVICE_UNAVAILABLE",
+          message: "Configuração do bot Telegram ausente no servidor.",
+        },
+      },
+      503,
+    );
+  }
 
   try {
     const body = await readJson(request);
 
-    let uid: string | number = "dev-local";
+    let uid: string | number;
     let name = "Visitante";
 
-    // 1. Telegram authentication if initData is supplied
-    if (typeof body.initData === "string" && body.initData.trim()) {
+    const hasInitData =
+      typeof body.initData === "string" && body.initData.trim().length > 0;
+
+    if (hasInitData) {
       if (!botToken) {
         return json(
           {
+            ok: false,
             valid: false,
             error: {
               code: "SERVICE_UNAVAILABLE",
@@ -43,29 +63,56 @@ export async function POST(request: Request) {
           503,
         );
       }
-      const verifiedUser = verifyTelegramUser(body.initData, botToken);
-      uid = verifiedUser.id;
-      name = verifiedUser.firstName;
-    } else if (botToken && process.env.NODE_ENV === "production") {
-      // In production with bot configured, require Telegram Mini App
-      return json(
-        {
-          valid: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "Abra pelo Telegram para confirmar sua identidade.",
+
+      try {
+        const verifiedUser = verifyTelegramUser(body.initData as string, botToken);
+        uid = verifiedUser.id;
+        name = verifiedUser.firstName;
+      } catch (authErr) {
+        const message =
+          authErr instanceof Error
+            ? authErr.message
+            : "Identidade Telegram não confirmada.";
+        return json(
+          {
+            ok: false,
+            valid: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message,
+            },
           },
-        },
-        401,
-      );
+          401,
+        );
+      }
     } else {
-      // Dev local / non-Telegram environment
+      // Missing initData:
+      // In production, strictly reject with 401 Unauthorized - NEVER allow dev-local fallback in production!
+      if (isProduction) {
+        return json(
+          {
+            ok: false,
+            valid: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Abra pelo Telegram para emitir cartela verificada.",
+            },
+          },
+          401,
+        );
+      }
+
+      // Explicit DEV mode only (when NODE_ENV !== "production"):
+      uid = "dev-local";
       if (typeof body.name === "string" && body.name.trim()) {
         name = body.name.trim().slice(0, 60);
+      } else {
+        name = "Visitante DEV";
       }
     }
 
-    // 2. Client is NEVER the authority for card numbers; generated strictly server-side.
+    // Client-supplied uid is strictly ignored; uid is solely derived from verified Telegram session or dev-local.
+    // Server is the sole authority for card numbers.
     const card: SignedCard = {
       v: 1,
       cid: crypto.randomUUID(),
@@ -79,6 +126,7 @@ export async function POST(request: Request) {
     const token = signCard(card, secret);
 
     return json({
+      ok: true,
       valid: true,
       token,
       card,
@@ -91,6 +139,7 @@ export async function POST(request: Request) {
       err instanceof Error ? err.message : "Dados da requisição inválidos.";
     return json(
       {
+        ok: false,
         valid: false,
         error: {
           code: "INVALID_REQUEST",

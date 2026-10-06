@@ -4,6 +4,14 @@ export async function readJson(
   request: Request,
   maxBytes = 12000,
 ): Promise<Record<string, unknown>> {
+  const contentType = request.headers.get("content-type");
+  if (
+    contentType &&
+    !contentType.includes("json") &&
+    !contentType.startsWith("text/plain")
+  ) {
+    throw new Error("Content-Type deve ser application/json.");
+  }
   const reader = request.body?.getReader();
   if (!reader) throw new Error("Corpo ausente.");
   let size = 0;

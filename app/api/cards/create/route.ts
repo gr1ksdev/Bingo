@@ -11,16 +11,28 @@ export async function POST(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!secret || !botToken) {
     return json(
-      { error: "Cartelas verificadas indisponíveis neste ambiente." },
+      {
+        ok: false,
+        error: {
+          code: "SERVICE_UNAVAILABLE",
+          message: "Cartelas verificadas indisponíveis neste ambiente.",
+        },
+      },
       503,
     );
   }
 
   try {
     const body = await readJson(request);
-    if (typeof body.initData !== "string") {
+    if (typeof body.initData !== "string" || !body.initData.trim()) {
       return json(
-        { error: "Abra pelo Telegram para confirmar sua identidade." },
+        {
+          ok: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Abra pelo Telegram para confirmar sua identidade.",
+          },
+        },
         401,
       );
     }
@@ -37,16 +49,25 @@ export async function POST(request: Request) {
     };
 
     return json({
+      ok: true,
       token: signCard(card, secret),
+      card,
       scope: "local",
       notice:
         "Identidade verificada; não representa inscrição em uma partida remota.",
     });
-  } catch {
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Não foi possível confirmar a sessão Telegram ou os dados enviados.";
     return json(
       {
-        error:
-          "Não foi possível confirmar a sessão Telegram ou os dados enviados.",
+        ok: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message,
+        },
       },
       400,
     );

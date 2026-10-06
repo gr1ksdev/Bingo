@@ -14,6 +14,7 @@
 - [x] Revisão responsiva e handoff final
 - [x] Polimento e robustez mobile (faixa horizontal eliminada, marcas orgânicas determinísticas, modal tátil de confirmação, PWA readiness)
 - [x] Cartelas assinadas BNG1S + Autenticação Telegram Mini App server-side (HMAC-SHA256, rotas `/api/cards/signed`, `/api/cards/verify`, `/api/auth/telegram`, validação oficial Telegram, proteção replay auth_date, validador admin com 3 estados táteis e 34 testes automatizados)
+- [x] Preparação real de Telegram Mini App em produção (isolamento estrito prod vs dev, bloqueio de dev-local em produção, ordenação ASCII determinística, progressive haptics, health check `/api/health`, documentação BotFather e Vercel, 44 testes automatizados)
 
 ## Próxima fase
 
@@ -22,5 +23,5 @@
 - [ ] Autorização do organizador e quotas de emissão por partida
 - [ ] Claims remotos e registro de partidas arquivadas
 - [ ] Padrões de vitória personalizados
-- [ ] Áudio/haptics opt-in adicionais
+- [ ] Áudio opt-in adicional
 - [ ] Deploy na Vercel com secrets de produção

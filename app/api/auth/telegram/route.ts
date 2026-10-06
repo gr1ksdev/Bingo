@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   if (!botToken) {
     return json(
       {
+        ok: false,
         authenticated: false,
         error: {
           code: "SERVICE_UNAVAILABLE",
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     if (typeof body.initData !== "string" || !body.initData.trim()) {
       return json(
         {
+          ok: false,
           authenticated: false,
           error: {
             code: "MISSING_INIT_DATA",
@@ -35,6 +37,7 @@ export async function POST(request: Request) {
 
     const user = verifyTelegramUser(body.initData, botToken);
     return json({
+      ok: true,
       authenticated: true,
       user,
     });
@@ -43,6 +46,7 @@ export async function POST(request: Request) {
       err instanceof Error ? err.message : "Identidade Telegram não confirmada.";
     return json(
       {
+        ok: false,
         authenticated: false,
         error: {
           code: "INVALID_INIT_DATA",
