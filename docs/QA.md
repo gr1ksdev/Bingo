@@ -46,3 +46,8 @@ Verifica ausência de overflow em `/`, `/play`, `/admin` a 360, 375, 390, 412 e 
 Lint (zero warnings), typecheck, 22 testes e build passaram. Smoke passou com toque, tinta, rabiscos, borracha, desfazer, limpezas separadas, persistência, clipboard, sincronização entre abas, token unsigned, histórico, 75 sorteios e chamada Bingo. Sem erros JavaScript de página.
 
 As 15 combinações de rota/largura ficaram sem scroll horizontal. Capturas finais revisadas e preservadas em `docs/qa/landing-390.png`, `docs/qa/play-390.png`, `docs/qa/admin-390.png`. O cenário da captura terminou com 75 pedras; um navegador novo inicia com sorteio vazio. A conferência do token verifica conteúdo/estado estruturado, e a revisão de screenshots complementa as medições do browser. Movimento normal foi observado nas capturas iniciais; o smoke automatizado usa reduced motion. Testes em dispositivos reais continuam pendentes.
+
+## Estojo de carimbos — 2026-10-07
+67 testes aprovados, lint/typecheck/build aprovados. Smoke atualizado em scripts/browser-smoke.mjs executado em Chromium contra build de produção, em 360/375/390/412/430px: sem overflow; alvos de carimbos/canetas ≥44px; marcação, freehand touch, borracha canvas, desfazer, reload, carimbos individuais e FREE, remoção individual, token unsigned, admin e 75 draws. UI Telegram simulada com e sem HapticFeedback, sem pageerror. Testes de segurança e autenticidade existentes preservados. Aparelhos físicos/WebView real continuam pendentes.
+
+Captura: docs/qa/play-stamps-390.png (produção). Blocos de madeira em duas fileiras, face com SVG original na cor selecionada, bloco selecionado elevado e sublinhado, divisória de madeira e canetas encaixadas; tinta translúcida abaixo dos números.

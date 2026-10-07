@@ -22,3 +22,5 @@ Validação em 2026-10-07: lint, typecheck, 67 testes e build de produção pass
 ## Carimbos locais — 2026-10-07
 
 Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
+
+QA da etapa: 67 testes, lint/typecheck/build e smoke Chromium de produção aprovados; 15 layouts sem overflow, Telegram simulado com/sem haptics. Commit de implementação c0ee619 enviado a origin/main. Captura em docs/qa/play-stamps-390.png. QA em aparelhos reais segue pendente.

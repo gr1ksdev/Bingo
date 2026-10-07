@@ -33,3 +33,5 @@
 - [x] Ferramenta/cor independentes, persistência compatível, borracha individual
 - [x] Separação de marks, strokes e stamps; contratos BNG1S/BNG1U preservados
 - [ ] BINGO real: retornar somente com claim server-side, gid persistente e draws oficiais
+- [x] 67 testes, lint/typecheck/build, smoke responsivo e Telegram simulado com/sem haptics
+- [x] Commit c0ee619 enviado a origin/main; captura visual de produção e handoff

@@ -135,3 +135,16 @@ Implementação: StampCase / StampGlyph / lib/stamps.ts; seis carimbos (coraçã
 Referência principal inspecionada: docs/design-reference/Colagem Vintage de Bingo em Português.png, primeira composição. Arquivo do usuário já estava não rastreado ao iniciar; será preservado fora do commit.
 
 Base: 09c17cd. Remote confirmado: git@github.com:gr1ksdev/Bingo.git. Branch e resultado final de QA/push serão registrados abaixo.
+
+### Verificação e Git desta etapa
+- Branch: main. Commit de implementação: c0ee619.
+- Push da implementação concluído em origin/main (09c17cd..c0ee619).
+- 67/67 testes (15 novos em tests/stamps.test.ts); lint, typecheck e build aprovados.
+- Smoke Chromium em produção: freehand touch, canvas ink/eraser/undo, marks, persistência, tokens, admin, 75 draws, coração, gatinho no FREE, remoção individual, Telegram simulado com/sem haptics.
+- 15 layouts (/, /play, /admin × 360/375/390/412/430px), sem overflow; carimbos e canetas ≥44px.
+- Screenshot de produção: docs/qa/play-stamps-390.png; demais capturas temporárias em /tmp/bingo-smoke.
+- Arte livre continua sem React state por pointermove. Desfazer continua dedicado a strokes; stamps são removidos pela borracha ou limpeza de desenhos confirmada.
+- Pendência: QA em dispositivos físicos e WebView real. Telegram nesta etapa foi simulado na UI; criptografia/endpoints seguem cobertos pela suíte existente.
+- Observação da execução dev: o SDK oficial pode acrescentar variáveis --tg-viewport-* ao html antes da hidratação e gerar aviso de atributos divergentes. O SDK e layout não foram alterados nesta tarefa.
+- A referência fornecida pelo usuário permanece não rastreada, como estava no início.
+- Este handoff e a captura serão registrados em um commit documental posterior; consultar git log -2 para seu hash.
