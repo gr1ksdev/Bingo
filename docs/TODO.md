@@ -35,3 +35,8 @@
 - [ ] BINGO real: retornar somente com claim server-side, gid persistente e draws oficiais
 - [x] 67 testes, lint/typecheck/build, smoke responsivo e Telegram simulado com/sem haptics
 - [x] Commit c0ee619 enviado a origin/main; captura visual de produção e handoff
+
+- [x] Reconstruir StampCase como estojo de lona com zíper, tampa compacta persistida e 12 ferramentas
+- [x] Segunda passagem visual: dentes ampliados, trama reduzida, volume da casca e puxador ajustado
+- [x] 90 testes, lint/typecheck/build, dois smokes de produção e quatro capturas finais
+- [ ] Registrar commit/push desta reconstrução (ver handoff)

@@ -11,6 +11,7 @@ import {
   STAMP_TYPES,
   TOOL_LABELS,
   type StampType,
+  setStampCaseOpen,
 } from "@/lib/stamps";
 import { telegram } from "@/lib/telegram/adapter";
 import type { TelegramAuthState, TelegramUser } from "@/lib/telegram/types";
@@ -383,10 +384,15 @@ export function PlayerScreen() {
         />
       </BingoCard>
       <StampCase
+        open={player.value.stampCaseOpen}
+        onOpenChange={(open) => {
+          telegram.haptic.impact("light");
+          playerStore.update((p) => setStampCaseOpen(p, open));
+        }}
         selectedTool={selectedTool}
         selectedColor={color}
         onTool={(tool) => {
-          telegram.haptic.selection();
+          telegram.haptic.impact("light");
           playerStore.update((p) => ({ ...p, selectedTool: tool }));
         }}
         onColor={(selected) => {

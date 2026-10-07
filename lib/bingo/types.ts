@@ -29,5 +29,6 @@ export type Player = {
   marks: Marks;
   strokes: Stroke[];
   stamps: import("../stamps").CardStamp[];
+  stampCaseOpen: boolean;
   selectedTool: import("../stamps").SelectedTool;
 };

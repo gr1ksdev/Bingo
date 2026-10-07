@@ -1491,67 +1491,162 @@ textarea {
   }
 }
 
-/* A single stationery box directly beneath the paper. */
+/* Vintage zippered canvas shell, with the original wooden tray nested inside. */
 .stamp-case {
-  margin: 8px 0 14px;
-  padding: 5px;
-  border: 5px solid #794722;
-  border-radius: 9px 6px 8px 7px;
-  background: url("/wood-grain.svg"), linear-gradient(100deg, #b77b40, #965b2c 65%, #c18a4e);
-  box-shadow: inset 0 0 0 2px #dfad69, 0 5px 0 #482917, 0 10px 15px #24130866;
+  position: relative;
+  isolation: isolate;
+  margin: 10px -4px 24px;
+  padding: 27px 12px 20px;
+  border-radius: 37px 33px 32px 38px / 32px 40px 35px 33px;
+  background:
+    url("/case-fabric.svg"),
+    radial-gradient(ellipse at 15% 0, #8e826644, transparent 45%),
+    linear-gradient(105deg, #343d36, #202b29 38%, #303731 85%, #171e1c);
+  background-size: 36px 36px, auto, auto;
+  box-shadow: inset 2px 2px 2px #aaa08266, inset -3px -5px 5px #101311,
+    0 4px 0 #1a201c, 0 9px 8px #291b1566, 0 15px 21px #24170e44;
 }
-.stamp-case h2 {
-  text-align: center;
-  margin: 0 0 7px;
-  font: 800 18px var(--font-hand);
-  color: #39220f;
-  text-shadow: 0 1px #e3b87899;
-  letter-spacing: 1px;
+.case-fabric-flap {
+  position: absolute; inset: 5px 11px auto; height: 40px;
+  border-radius: 26px 23px 6px 9px;
+  background: url("/case-fabric.svg"), linear-gradient(#51554a, #272f29);
+  background-size: 36px 36px, auto;
+  box-shadow: inset 0 2px 2px #b0a48955, 0 4px 7px #0b130d99;
+  transform: rotate(-.7deg); z-index: -1;
 }
+.case-seam {
+  position: absolute; inset: 3px 4px 4px; pointer-events: none;
+  border: 1px solid #a69b6d55;
+  border-radius: 35px 31px 31px 36px;
+  box-shadow: inset 0 0 0 2px #0b161c88, 0 1px 0 #92836455;
+}
+.case-reveal { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 300ms ease-in-out, opacity 180ms 70ms; }
+.case-reveal-clip { min-height: 0; overflow: hidden; border-radius: 21px 17px 16px 21px; }
+.case-interior {
+  padding: 7px 6px 5px;
+  border: 2px solid #6b4225;
+  border-radius: 20px 16px 16px 20px;
+  background: url("/wood-grain.svg"), linear-gradient(100deg, #a7753f, #6b4124 65%, #a57748);
+  box-shadow: inset 1px 2px 5px #25160ecc, inset 0 0 0 2px #be915955;
+}
+.stamp-case .case-wood-label {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: fit-content; max-width: 95%; margin: 0 auto 10px;
+  padding: 3px 11px 2px; border: 1px solid #51331c;
+  border-radius: 2px 4px 3px 2px;
+  background: url("/wood-grain.svg"), #c2945f;
+  font: 800 16px var(--font-hand); color: #39220f;
+  text-shadow: 0 1px #e3b87866;
+  box-shadow: 0 2px 2px #20130966, inset 0 1px #e1b67a;
+  transform: rotate(.6deg);
+}
+.case-wood-label svg { width: 13px; height: 13px; }
 .stamp-nest {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 8px 15px;
-  background: url("/wood-grain.svg"), #55341f;
-  border-radius: 4px;
-  box-shadow: inset 0 3px 7px #211208;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px 8px; padding: 9px 5px 13px;
+  background: url("/wood-grain.svg"), linear-gradient(100deg, #402718, #614126, #382417);
+  border-radius: 7px 5px 6px 4px;
+  box-shadow: inset 0 3px 7px #211208, 0 1px #bc8c5555;
 }
 .wood-stamp {
-  flex: 0 0 calc((100% - 30px) / 4);
-  min-height: 65px;
-  padding: 4px 3px 2px;
+  position: relative; min-width: 0; min-height: 63px;
+  padding: 3px 2px 1px;
   border: 2px solid #a16c37;
   border-radius: 5px 3px 5px 4px;
   background: url("/wood-grain.svg"), linear-gradient(115deg, #ecc790, #c89557);
-  box-shadow: inset 1px 1px 0 #ffe3b1, 0 5px 0 #75451f, 2px 7px 3px #190c09aa;
+  box-shadow: inset 1px 1px 0 #ffe3b1, inset -1px -1px #9a6638,
+    1px 4px 0 #75451f, 3px 7px 3px #190c09aa;
   transform: rotate(var(--tilt));
   transition: transform 120ms, box-shadow 120ms;
 }
-.stamp-face { display: block; width: 41px; height: 41px; margin: auto; }
-.stamp-name { display: block; font: 12px var(--font-hand); color: #503219; }
+.wood-stamp::after {
+  content: ""; position: absolute; inset: 1px;
+  border: 1px solid #ffe1a64a; border-radius: 3px 5px 2px 4px; pointer-events: none;
+}
+.stamp-face { display: block; width: 39px; height: 39px; margin: auto; }
+.stamp-name { display: block; font: 11px var(--font-hand); color: #503219; white-space: nowrap; }
 .wood-stamp[aria-pressed="true"] {
-  transform: translateY(-5px) rotate(var(--tilt));
-  box-shadow: inset 0 0 0 2px #61381f, 0 6px 0 #75451f, 3px 12px 6px #190c09bb;
+  transform: translateY(-4px) rotate(calc(var(--tilt) - 1deg));
+  box-shadow: inset 0 0 0 1px #61381f, 1px 5px 0 #75451f, 4px 12px 6px #190c09bb;
 }
 .wood-stamp[aria-pressed="true"] .stamp-name { text-decoration: underline; font-weight: 800; }
-.stamp-case .marker-section { margin: 12px 0 0; border-top: 5px ridge #b47b44; padding-top: 9px; }
-.stamp-case .case-label { padding: 0 5px; }
+.stamp-case .marker-section {
+  position: relative; margin: 9px -6px 0;
+  border-top: 6px ridge #966537; padding-top: 8px;
+}
+.stamp-case .case-label { padding: 0 6px; }
 .stamp-case .case-label .handwritten { display: none; }
 .stamp-case .case-label .paper-strip { font-size: 14px; }
-.stamp-case .marker-case { border: 0; border-radius: 3px; padding: 5px 0 0; background: #4d301f; box-shadow: inset 0 3px 7px #211208; }
-.stamp-case .case-lining { padding: 4px 0 0; border-radius: 3px; }
+.stamp-case .marker-case { border: 0; border-radius: 3px 3px 11px 11px; padding: 5px 0 0; background: #4d301f; box-shadow: inset 0 3px 7px #211208; }
+.stamp-case .case-lining { padding: 4px 0 0; border-radius: 3px 3px 11px 11px; }
 .stamp-case .zipper-pull { display: none; }
 .stamp-case .marker-slot { min-height: 100px; }
+.case-zipper { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.case-pull {
+  position: absolute; z-index: 4; bottom: -9px; left: calc(100% - 57px);
+  width: 48px; height: 68px; padding: 0;
+  background: transparent; border: 0;
+  transition: left 300ms ease-in-out, transform 300ms ease-in-out;
+  transform: rotate(-12deg); transform-origin: 50% 12%;
+}
+.case-pull:active:not(:disabled) { transform: rotate(-8deg) translateY(1px); }
+.pull-art { width: 45px; height: 68px; filter: drop-shadow(2px 3px 2px #1b100b80); }
+.case-pull:focus-visible { outline: 2px solid #e8cfa1; outline-offset: 1px; border-radius: 11px; }
+.case-lid {
+  position: absolute; inset: 18px 19px; border-radius: 23px 20px 22px 24px;
+  background: url("/case-fabric.svg"), radial-gradient(ellipse at 35% 10%, #62634a66, transparent 75%), #25322f;
+  background-size: 36px 36px, auto, auto;
+  box-shadow: inset 1px 2px 2px #9c947459, inset -2px -4px 4px #0c1715, 0 4px 5px #121714;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 120ms, visibility 120ms;
+}
+.case-patch {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-1deg);
+  width: 163px; padding: 5px 7px;
+  border: 2px solid #58361f; border-radius: 4px 3px 5px 3px;
+  background: url("/paper-grain.svg"), linear-gradient(105deg, #be8f59, #ba8650, #a77240);
+  box-shadow: inset 0 0 0 2px #deb48199, 1px 3px 3px #0c110ccc;
+  font: 800 15px/1.15 var(--font-body); letter-spacing: .7px;
+  color: #302317; text-align: center;
+}
+.case-patch::before {
+  content: ""; position: absolute; inset: 3px; pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, #57371f 0 3px, transparent 3px 6px) top / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, #57371f 0 3px, transparent 3px 6px) bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(0deg, #57371f 0 3px, transparent 3px 6px) left / 1px 100% no-repeat,
+    repeating-linear-gradient(0deg, #57371f 0 3px, transparent 3px 6px) right / 1px 100% no-repeat;
+  opacity: .7;
+}
+.case-held-tool { width: 28px; height: 28px; }
+.case-worn-print { position: absolute; width: 42px; height: 42px; opacity: .25; }
+.print-star { color: #d0a75a; left: 9px; top: 18px; transform: rotate(-13deg); }
+.print-flower { color: #cb8d86; right: 6px; top: 10px; transform: rotate(13deg); }
+.print-paw { color: #94aca0; right: 38px; bottom: -2px; width: 25px; height: 25px; transform: rotate(-23deg); }
+.case-closed .case-reveal { grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 300ms ease-in-out, opacity 110ms; }
+.case-closed { padding-top: 57px; padding-bottom: 57px; transition: padding 300ms ease-in-out; }
+.case-open { transition: padding 300ms ease-in-out; }
+.case-closed .case-lid { visibility: visible; opacity: 1; transition: opacity 160ms 100ms, visibility 160ms; }
+.case-closed .case-pull { left: 5px; transform: rotate(12deg); }
 .stamp-ink { position: absolute; width: 83%; height: 83%; pointer-events: none; z-index: 1; animation: stamp-pressure 130ms ease-out; }
 .stamp-ink svg { width: 100%; height: 100%; }
 .free-star { position: relative; z-index: 2; }
 .player-shell .play-actions { justify-content: space-between; }
 @keyframes stamp-pressure { from { scale: 1.06; } to { scale: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .wood-stamp { transition: none; }
+  .wood-stamp, .case-reveal, .case-lid, .case-pull, .case-closed, .case-open { transition: none !important; }
   .stamp-ink { animation: none; }
 }
 
 .player-shell .bingo-cell:disabled { opacity: 1; cursor: default; }
+
+.case-patch::after {
+  content: ""; position: absolute; left: 6px; top: 6px; width: 3px; height: 3px;
+  border-radius: 50%; background: #aa824c;
+  box-shadow: 0 1px 1px #462c19, 146px 0 #aa824c, 146px 1px 1px #462c19;
+}
+.stamp-case .stamp-nest .wood-stamp:nth-child(3n) {
+  background-image: url("/wood-grain.svg"), linear-gradient(125deg, #dfba83, #c18b4e 80%, #ad793e);
+  border-radius: 3px 6px 4px 5px;
+}

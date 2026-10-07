@@ -24,6 +24,7 @@ const player = (): Player => ({
   strokes: [],
   stamps: [],
   selectedTool: "mark" as const,
+  stampCaseOpen: true,
 });
 test("Legacy player defaults to mark and empty stamps without losing state", () => {
   const p = player();

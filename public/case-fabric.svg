@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
+ <defs><pattern id="weave" width="6" height="6" patternUnits="userSpaceOnUse">
+ <path d="M0 1h6M0 4h6" stroke="#c3aa7c" opacity=".17" stroke-width=".8"/>
+ <path d="M1 0v6M4 0v6" stroke="#070e0e" opacity=".55" stroke-width="1.1"/>
+ <path d="M0 1h2M3 4h2" stroke="#bbaa85" opacity=".27" stroke-width="1"/>
+ </pattern></defs>
+ <path fill="url(#weave)" d="M0 0h72v72H0z"/>
+ <path d="M10 21l8 1M51 49l5 -1M32 61l3 1M63 8l4 -1M3 42l6 1" stroke="#ccba8c" opacity=".15" stroke-width="1"/>
+</svg>

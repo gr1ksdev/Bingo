@@ -5,6 +5,11 @@ export const STAMP_TYPES = [
   "paw",
   "cat",
   "flower",
+  "moon",
+  "smile",
+  "clover",
+  "lightning",
+  "crown",
   "spiral",
 ] as const;
 export type StampType = (typeof STAMP_TYPES)[number];
@@ -33,6 +38,11 @@ export const TOOL_LABELS: Record<SelectedTool, string> = {
   cat: "gatinho",
   flower: "flor",
   spiral: "espiral",
+  smile: "carinha feliz",
+  moon: "lua",
+  clover: "trevo",
+  lightning: "raio",
+  crown: "coroa",
 };
 export function isSelectedTool(v: unknown): v is SelectedTool {
   return typeof v === "string" && Object.hasOwn(TOOL_LABELS, v);
@@ -112,5 +122,13 @@ export function normalizeArt(v: unknown): unknown {
     ...p,
     stamps: p.stamps ?? [],
     selectedTool: p.selectedTool ?? "mark",
+    stampCaseOpen: p.stampCaseOpen ?? true,
   };
+}
+
+export function setStampCaseOpen<T extends { stampCaseOpen: boolean }>(
+  player: T,
+  open: boolean,
+): T {
+  return { ...player, stampCaseOpen: open };
 }

@@ -148,3 +148,15 @@ Base: 09c17cd. Remote confirmado: git@github.com:gr1ksdev/Bingo.git. Branch e re
 - Observação da execução dev: o SDK oficial pode acrescentar variáveis --tg-viewport-* ao html antes da hidratação e gerar aviso de atributos divergentes. O SDK e layout não foram alterados nesta tarefa.
 - A referência fornecida pelo usuário permanece não rastreada, como estava no início.
 - Este handoff e a captura serão registrados em um commit documental posterior; commit documental 61d741a também enviado; captura final revisada em commit posterior.
+
+## Reconstrução do estojo — 2026-10-07
+StampCase agora representa fisicamente um estojo com zíper, possuindo estados open/closed persistidos. Default true, normalização backward-compatible; fechar mantém ferramenta, cor, marcas, strokes e stamps. Onze stamps + Livre em 4×3; novos tipos smile/moon/clover/lightning/crown usam o mesmo contrato/seed/borracha/limite de três.
+
+Casca em lona oliva escura procedural (public/case-fabric.svg), costura, interior de madeira, dentes de latão em SVG, cursor separado e puxador de couro que percorre a borda inferior em 300ms. Tampa fechada com patch costurado, estampas gastas e ferramenta em tinta. Conteúdo fechado é inert/aria-hidden; puxador semântico com aria-expanded e labels por estado. Reduced motion desliga transições.
+
+Cartela, mesa, canetas, toolbar inferior e implementação de autenticação/criptografia preservadas. Referências locais inspecionadas: captura play-stamps-390 e Colagem Rústica de Bingo e Carimbos. Duas passagens visuais realizadas; primeira moldura metálica lisa foi substituída por dentes mais largos, trama fina e volume da casca. QA final aprovado.
+Base ab6d676, branch main, origin git@github.com:gr1ksdev/Bingo.git. Referências do usuário não rastreadas serão preservadas fora dos commits.
+
+Verificação final: 90/90 testes (67 preservados + 23 coberturas adicionais), lint/typecheck/build aprovados. Novo scripts/stamp-case-smoke.mjs passou em produção: storage legado, todos os glyphs, cores independentes, open/close/reload, uso fechado, teclado, borracha dos cinco novos tipos, deslocamento do puxador e reduced motion; 360×800, 375×812, 390×844, 412×915, 430×932 e 1280×900 em ambos os estados, sem overflow e alvos ≥44px. Smoke anterior também passou (canvas touch/DPR/undo/persistência/admin). Telegram simulado com/sem haptics; aparelhos físicos ainda pendentes.
+
+Capturas de produção: docs/qa/play-stamp-case-open-390.png, play-stamp-case-closed-390.png, play-stamp-case-open-desktop.png e play-stamp-case-closed-desktop.png. Avaliação contra referência B: tecido, fita/dentes/cursor/puxador, costura, madeira, blocos e canetas integradas, tampa física compacta presentes. Altura fechada 114px; seleção continua na mão. Git diff confirmou zero mudanças em layout/SDK, rotas API, Telegram/criptografia, cartela/células, canvas, toolbar e canetas.

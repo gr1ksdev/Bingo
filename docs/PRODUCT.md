@@ -13,3 +13,5 @@ Futuro: partidas persistentes, autenticação do organizador, emissão vinculada
 ## Carimbos locais — 2026-10-07
 
 Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
+
+Estojo escolar vintage com casca de lona, interior de madeira e zíper interativo. Puxador abre/fecha; estado fechado compacto preserva ferramenta e cor na mão, com indicação física na etiqueta. Coleção inteira em 4×3: coração, estrela, patinha, gatinho, flor, lua, carinha feliz, trevo, raio, coroa, espiral e Livre.

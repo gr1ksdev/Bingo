@@ -72,3 +72,5 @@ Carimbos são expressão cosmética exclusivamente client-side: nunca entram em 
 Preservar utilitários puros de validação e seus testes porque o organizador ainda os utiliza. Não sofisticar a conferência local do jogador. Cartela/identidade/partida/sorteios/claims pertencem à autoridade server-side; marks/strokes/stamps e escolhas de ferramenta/cor pertencem ao navegador.
 
 Escolher SVG por célula para carimbos preserva o canvas existente, mantém números acima da tinta e permite remoção individual. Borracha toca uma célula para remover apenas seu carimbo mais recente; arrastar continua apagando rabiscos. Seleção direta no estojo dispensa modal e desacopla cor da ferramenta.
+
+Extensão da ADR-015: `stampCaseOpen` persiste somente true/false, default true em storage antigo. Abrir/fechar muda apresentação, nunca ferramenta/cor/arte ou confiança. CSS controla transições de 300ms e reduced motion; SVG local representa fita, dentes, cursor e puxador, sem biblioteca ou raster do estojo.

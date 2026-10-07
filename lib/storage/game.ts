@@ -58,6 +58,7 @@ export function isPlayer(v: unknown): v is Player {
       ([key, c]) =>
         /^(?:[0-9]|1[0-9]|2[0-4])$/.test(key) && key !== "12" && isColor(c),
     ) &&
+    typeof v.stampCaseOpen === "boolean" &&
     isSelectedTool(v.selectedTool) &&
     Array.isArray(v.stamps) &&
     v.stamps.length <= MAX_STAMPS &&
@@ -101,6 +102,7 @@ export const playerStore = createStore<Player>(
     strokes: [],
     stamps: [],
     selectedTool: "mark",
+    stampCaseOpen: true,
   }),
   isPlayer,
   normalizeArt,

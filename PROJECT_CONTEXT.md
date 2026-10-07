@@ -17,10 +17,13 @@ Confiança criptográfica e tokens:
 
 Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marcas de tinta com variação orgânica determinística, estojo físico de sete canetas, botões táteis, diálogo modal integrado de confirmação em papel; safe areas, reduced motion e progressive haptics.
 
-Validação em 2026-10-07: lint, typecheck, 67 testes e build de produção passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.
+Validação em 2026-10-07: lint, typecheck, 90 testes e build de produção passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.
 
 ## Carimbos locais — 2026-10-07
 
 Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
 
 QA da etapa: 67 testes, lint/typecheck/build e smoke Chromium de produção aprovados; 15 layouts sem overflow, Telegram simulado com/sem haptics. Commit de implementação c0ee619 enviado a origin/main. Captura em docs/qa/play-stamps-390.png. QA em aparelhos reais segue pendente.
+
+StampCase agora representa fisicamente um estojo com zíper, possuindo estados open/closed persistidos (`stampCaseOpen`, default true). Coleção de 12 ferramentas: onze carimbos e Livre. Lona procedural local, costura, dentes de latão, cursor e puxador de couro móvel; cartela, canetas e auth preservadas.
+QA da reconstrução: 90/90 testes, lint/typecheck/build e dois smokes de produção aprovados; cinco viewports exatas + desktop, aberto/fechado, sem overflow. Capturas play-stamp-case-{open,closed}-{390,desktop}.png em docs/qa.
