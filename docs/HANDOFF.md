@@ -147,4 +147,4 @@ Base: 09c17cd. Remote confirmado: git@github.com:gr1ksdev/Bingo.git. Branch e re
 - Pendência: QA em dispositivos físicos e WebView real. Telegram nesta etapa foi simulado na UI; criptografia/endpoints seguem cobertos pela suíte existente.
 - Observação da execução dev: o SDK oficial pode acrescentar variáveis --tg-viewport-* ao html antes da hidratação e gerar aviso de atributos divergentes. O SDK e layout não foram alterados nesta tarefa.
 - A referência fornecida pelo usuário permanece não rastreada, como estava no início.
-- Este handoff e a captura serão registrados em um commit documental posterior; consultar git log -2 para seu hash.
+- Este handoff e a captura serão registrados em um commit documental posterior; commit documental 61d741a também enviado; captura final revisada em commit posterior.

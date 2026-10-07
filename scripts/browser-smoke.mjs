@@ -250,11 +250,13 @@ try {
           assert.ok(targets.every(t => t.w >= 44 && t.h >= 44), selector + " comfortable touch targets at " + width);
         }
       }
-      if (width === 390)
+      if (width === 390) {
+        await play.evaluate(() => window.scrollTo(0, 0));
         await play.screenshot({
           path: `${artifacts}/${route === "/" ? "landing" : route.slice(1)}-390.png`,
           fullPage: true,
         });
+      }
     }
   }
   // Simulated Telegram UI lifecycle; cryptographic authenticity is covered by API tests.
