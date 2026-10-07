@@ -28,4 +28,6 @@ export type Player = {
   color: string;
   marks: Marks;
   strokes: Stroke[];
+  stamps: import("../stamps").CardStamp[];
+  selectedTool: import("../stamps").SelectedTool;
 };

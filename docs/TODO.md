@@ -26,3 +26,10 @@
 - [ ] Padrões de vitória personalizados
 - [ ] Áudio opt-in adicional
 - [ ] Deploy na Vercel com secrets de produção
+
+## Estojo de carimbos
+- [x] Remover ação e mensagens do BINGO local no player
+- [x] Estojo integrado de madeira, seis carimbos e Livre
+- [x] Ferramenta/cor independentes, persistência compatível, borracha individual
+- [x] Separação de marks, strokes e stamps; contratos BNG1S/BNG1U preservados
+- [ ] BINGO real: retornar somente com claim server-side, gid persistente e draws oficiais

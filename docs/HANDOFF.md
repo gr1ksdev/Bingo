@@ -13,7 +13,7 @@ A aplicação está em condições comprovadas de rodar como **TELEGRAM MINI APP
   - No Telegram autenticado: exibe sutilmente no topo `Partida #... · Jogando como [Nome]`.
   - No navegador normal: botão/texto convida claramente o jogador: *"Abra pelo Telegram para gerar uma cartela verificada."* Em ambiente DEV (`NODE_ENV !== "production"`), mecanismo local explícito `[DEV] Solicitar cartela de teste (BNG1S)` permanece disponível e identificado.
   - Substituição segura de cartela: se houver marcações ou rabiscos a caneta, o diálogo modal tátil em papel/madeira exige confirmação antes de substituir a cartela por uma nova cartela verificada emitida pelo servidor.
-  - Progressive haptics: feedback vibratório suave em marcação de células, sorteio de pedras, comemoração de BINGO e confirmação de cartela assinada.
+  - Progressive haptics: feedback vibratório suave em marcação de células, sorteio de pedras, seleção/aplicação de carimbos e confirmação de cartela assinada.
   - DrawingCanvas com 60fps sem resíduos em DPR fracionário, borracha, desfazer e persistência local.
 - `/admin`: mesa do organizador:
   - Sorteio com Web Crypto e rejection sampling (75 pedras sem repetição).
@@ -125,3 +125,13 @@ Node 22+, `npm ci`, `npm run dev`. Para produção local: `npm run build`, `npm 
 - responsividade: zero overflow
 - auditoria de produção: zero vulnerabilidades
 
+
+## Etapa atual — estojo de carimbos (2026-10-07)
+
+Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
+
+Implementação: StampCase / StampGlyph / lib/stamps.ts; seis carimbos (coração, estrela, patinha, gatinho, flor, espiral), mais Livre. Cor independente. Estado inicial Marcar preserva toque tradicional. Borracha remove último stamp da célula tocada e continua apagando strokes. O canvas preserva capture, DPR e inversão da rotação. Estados antigos são normalizados sem descarte.
+
+Referência principal inspecionada: docs/design-reference/Colagem Vintage de Bingo em Português.png, primeira composição. Arquivo do usuário já estava não rastreado ao iniciar; será preservado fora do commit.
+
+Base: 09c17cd. Remote confirmado: git@github.com:gr1ksdev/Bingo.git. Branch e resultado final de QA/push serão registrados abaixo.

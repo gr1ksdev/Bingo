@@ -10,6 +10,12 @@ import {
   MAX_STROKE_POINTS,
   MAX_DRAWING_POINTS,
 } from "@/lib/drawing";
+import {
+  isCardStamp,
+  isSelectedTool,
+  MAX_STAMPS,
+  normalizeArt,
+} from "../stamps";
 const isObject = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
 const isColor = (v: unknown): v is string =>
@@ -41,7 +47,7 @@ function isStroke(v: unknown): v is Stroke {
     )
   );
 }
-function isPlayer(v: unknown): v is Player {
+export function isPlayer(v: unknown): v is Player {
   return (
     isObject(v) &&
     v.v === 1 &&
@@ -52,6 +58,10 @@ function isPlayer(v: unknown): v is Player {
       ([key, c]) =>
         /^(?:[0-9]|1[0-9]|2[0-4])$/.test(key) && key !== "12" && isColor(c),
     ) &&
+    isSelectedTool(v.selectedTool) &&
+    Array.isArray(v.stamps) &&
+    v.stamps.length <= MAX_STAMPS &&
+    v.stamps.every(isCardStamp) &&
     Array.isArray(v.strokes) &&
     v.strokes.length <= MAX_STROKES &&
     v.strokes.every(isStroke) &&
@@ -89,7 +99,10 @@ export const playerStore = createStore<Player>(
     color: DEFAULT_COLOR,
     marks: {},
     strokes: [],
+    stamps: [],
+    selectedTool: "mark",
   }),
   isPlayer,
+  normalizeArt,
 );
 export const gameStore = createStore<Game>("bingo:game:v1", newGame, isGame);

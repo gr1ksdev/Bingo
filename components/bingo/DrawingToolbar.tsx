@@ -8,6 +8,8 @@ export function DrawingToolbar({
   undo,
   canUndo,
   clear,
+  marking = true,
+  canClear = canUndo,
 }: {
   mode: DrawingMode;
   setMode: (mode: DrawingMode) => void;
@@ -16,12 +18,14 @@ export function DrawingToolbar({
   undo: () => void;
   canUndo: boolean;
   clear: () => void;
+  marking?: boolean;
+  canClear?: boolean;
 }) {
   return (
     <div className="drawing-tools">
       <div className="mode-switch" aria-label="Modo de interação">
         <button
-          aria-pressed={mode === "stamp"}
+          aria-pressed={mode === "stamp" && marking}
           onClick={() => setMode("stamp")}
         >
           <Icon name="stamp" />
@@ -39,7 +43,7 @@ export function DrawingToolbar({
           <Icon name="eraser" />
         </button>
       </div>
-      {mode !== "stamp" && (
+      {(mode !== "stamp" || canClear) && (
         <div className="stroke-tools">
           <label>
             Traço{" "}
@@ -63,7 +67,7 @@ export function DrawingToolbar({
           <button
             className="tool-button"
             onClick={clear}
-            disabled={!canUndo}
+            disabled={!canClear}
             aria-label="Limpar desenhos"
           >
             <Icon name="trash" />

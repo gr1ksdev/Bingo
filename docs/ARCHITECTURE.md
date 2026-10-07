@@ -62,7 +62,7 @@ Limites: 600 strokes, 3000 pontos por stroke, 30000 pontos totais. Coordenadas a
 
 `lib/storage/store.ts` centraliza todas as chamadas de localStorage. Hooks usam `useSyncExternalStore` com snapshot nulo no SSR para hidratação consistente. Dados carregam somente no cliente e são validados antes de uso e escrita. Falhas de quota/permissão ficam visíveis.
 
-- `bingo:player:v1`: números, nome, data, cor, marcas e strokes.
+- `bingo:player:v1`: números, nome, data, cor, ferramenta, marcas, strokes e stamps.
 - `bingo:game:v1`: ID local, data de início, ordem das pedras, regra.
 
 Eventos `storage` acompanham mudanças em outras abas. O estado pertence à origem/navegador; não há conta, sala remota ou sincronização entre dispositivos. Um organizador por vez: escrita entre abas não é uma transação distribuída. Nova partida substitui o histórico local atual; arquivamento de partidas anteriores é futuro.
@@ -118,5 +118,17 @@ flowchart TD
 
 Next.js na Vercel; nada depende de filesystem persistente ou memória de função serverless. Fontes locais com licença OFL e texturas procedurais originais.
 
-Checks: lint, typecheck, 44 testes automatizados e build de produção.
+Checks: lint, typecheck, 67 testes automatizados e build de produção.
 Guias dedicados: `docs/TELEGRAM_SETUP.md` (BotFather) e `docs/DEPLOYMENT.md` (Vercel).
+
+## Carimbos locais — 2026-10-07
+
+Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
+
+Modelo: `CardStamp { id, cellIndex, type, color, rotation, scale, offsetX, offsetY, opacity, seed, createdAt }` em `lib/stamps.ts`. Contornos SVG originais em `StampGlyph`, sobrepostos dentro da célula e abaixo dos números; sem filtros caros. Seed e parâmetros são gerados somente na criação e persistidos; render não usa aleatoriedade.
+
+`selectedTool` é independente de `color` (selectedColor na UI). Inicial: `mark`, preservando o tap tradicional; `freehand` mantém canvas/Pointer Events; seis tipos aplicam decoração sem alterar marks; `eraser` mantém destination-out e remove o último carimbo da célula tocada. Máximo 150 carimbos, três por célula. FREE aceita carimbos.
+
+A mesma chave `bingo:player:v1` é mantida. Normalização no read adiciona `stamps: []` e `selectedTool: "mark"` em estados antigos, preservando card, marcas e strokes. Validação limita tipos e parâmetros antes da escrita. Substituição de cartela e limpeza de desenhos abrangem stamps, com confirmação existente; limpar marcas não remove stamps. Desfazer continua dedicado aos strokes.
+
+`StampCase` integra o compartimento de blocos de madeira ao `MarkerCase` existente, imediatamente abaixo da cartela. Ferramentas são botões semânticos com aria-pressed e foco; escolha/aplicação usa o adapter de haptics progressivos existente. Nenhuma alteração em auth Telegram ou rotas de confiança.

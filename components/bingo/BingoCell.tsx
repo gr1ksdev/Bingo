@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import type { CardStamp } from "@/lib/stamps";
+import { StampGlyph } from "./StampGlyph";
 import { Icon } from "@/components/ui/Icon";
 
 export function getOrganicMarkStyle(
@@ -9,11 +11,11 @@ export function getOrganicMarkStyle(
   // Deterministic seed based on cell index and cell number.
   // Stable across reloads for persistent marks without altering storage structure.
   const seed = ((index + 1) * 37 + (number ?? 0) * 19) % 1000;
-  const angle = ((seed % 29) - 14) + (seed % 7) * 0.35;
+  const angle = (seed % 29) - 14 + (seed % 7) * 0.35;
   const x = (((seed * 7) % 5) - 2) * 0.75;
   const y = (((seed * 11) % 5) - 2) * 0.75;
-  const scale = 0.89 + ((seed % 9) / 110);
-  const opacity = 0.51 + ((seed % 7) * 0.01);
+  const scale = 0.89 + (seed % 9) / 110;
+  const opacity = 0.51 + (seed % 7) * 0.01;
   const r1 = 40 + (seed % 14);
   const r2 = 51 + ((seed * 3) % 14);
   const r3 = 43 + ((seed * 5) % 14);
@@ -45,12 +47,16 @@ export function BingoCell({
   color,
   onMark,
   highlighted = false,
+  stamps = [],
+  actionLabel,
 }: {
   number: number | null;
   index: number;
   color?: string;
   onMark?: (i: number) => void;
   highlighted?: boolean;
+  stamps?: CardStamp[];
+  actionLabel?: string;
 }) {
   const mark = color ? (
     <span
@@ -72,9 +78,24 @@ export function BingoCell({
       </>
     );
 
-  if (number === null) {
+  const impressions = stamps.map((s) => (
+    <span
+      key={s.id}
+      className="stamp-ink"
+      style={{
+        color: s.color,
+        opacity: s.opacity,
+        transform: `translate(${s.offsetX}px, ${s.offsetY}px) rotate(${s.rotation}deg) scale(${s.scale})`,
+      }}
+    >
+      <StampGlyph type={s.type} seed={s.seed} />
+    </span>
+  ));
+
+  if (number === null && !onMark) {
     return (
       <div className={`bingo-cell ${highlighted ? "matched" : ""}`}>
+        {impressions}
         {content}
       </div>
     );
@@ -86,9 +107,10 @@ export function BingoCell({
       className={`bingo-cell ${highlighted ? "matched" : ""}`}
       onClick={onMark ? () => onMark(index) : undefined}
       disabled={!onMark}
-      aria-label={`Número ${number}${color ? ", marcado" : ""}`}
+      aria-label={`${number === null ? "Casa livre" : `Número ${number}`}${color ? ", marcado" : ""}${actionLabel ? `, ${actionLabel}` : ""}`}
       aria-pressed={!!color}
     >
+      {impressions}
       {content}
     </button>
   );

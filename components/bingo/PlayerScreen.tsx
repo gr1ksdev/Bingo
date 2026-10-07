@@ -1,34 +1,37 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { gameStore, playerStore } from "@/lib/storage/game";
 import { createUnsignedCard } from "@/lib/bingo/generate-card";
 import { encodeUnsigned } from "@/lib/bingo/token";
 import { ballLabel, PATTERN_LABELS } from "@/lib/bingo/constants";
-import { validateBingo } from "@/lib/bingo/validation";
+import {
+  addStamp,
+  createStamp,
+  removeStamp,
+  STAMP_TYPES,
+  TOOL_LABELS,
+  type StampType,
+} from "@/lib/stamps";
 import { telegram } from "@/lib/telegram/adapter";
 import type { TelegramAuthState, TelegramUser } from "@/lib/telegram/types";
 import { BingoHeader } from "./BingoHeader";
 import { BingoCard } from "./BingoCard";
-import { MarkerCase } from "./MarkerCase";
+import { StampCase } from "./StampCase";
 import { DrawingToolbar, type DrawingMode } from "./DrawingToolbar";
 import { DrawingCanvas } from "./DrawingCanvas";
 import { Icon } from "@/components/ui/Icon";
 import { MAX_STROKES, MAX_DRAWING_POINTS } from "@/lib/drawing";
 
 type ConfirmAction =
-  | "swap"
-  | "clear-marks"
-  | "clear-drawings"
-  | "request-signed"
-  | null;
+  "swap" | "clear-marks" | "clear-drawings" | "request-signed" | null;
 
 export function PlayerScreen() {
   const player = playerStore.useValue();
   const game = gameStore.useValue();
-  const [mode, setMode] = useState<DrawingMode>("stamp");
+
   const [width, setWidth] = useState(5);
   const [message, setMessage] = useState("");
-  const [won, setWon] = useState(false);
+
   const [copyStatus, setCopyStatus] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [signedToken, setSignedToken] = useState<string | null>(null);
@@ -36,7 +39,6 @@ export function PlayerScreen() {
   const [signedNotice, setSignedNotice] = useState("");
   const [authState, setAuthState] = useState<TelegramAuthState>("BROWSER");
   const [verifiedUser, setVerifiedUser] = useState<TelegramUser | null>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
 
   const isDev = process.env.NODE_ENV !== "production";
 
@@ -124,16 +126,6 @@ export function PlayerScreen() {
   }, []);
 
   useEffect(() => {
-    if (message)
-      resultRef.current?.scrollIntoView({
-        block: "center",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-      });
-  }, [message]);
-
-  useEffect(() => {
     if (!confirmAction) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setConfirmAction(null);
@@ -151,13 +143,25 @@ export function PlayerScreen() {
       </main>
     );
 
-  const { card, color, marks, strokes } = player.value;
+  const { card, color, marks, strokes, stamps, selectedTool } = player.value;
+  const mode: DrawingMode =
+    selectedTool === "freehand"
+      ? "pen"
+      : selectedTool === "eraser"
+        ? "eraser"
+        : "stamp";
+  const setMode = (next: DrawingMode) =>
+    playerStore.update((p) => ({
+      ...p,
+      selectedTool:
+        next === "pen" ? "freehand" : next === "eraser" ? "eraser" : "mark",
+    }));
   const { drawn, pattern } = game.value;
   const unsignedToken = encodeUnsigned(card);
   const activeToken = signedToken ?? unsignedToken;
 
   const hasMarks = Object.keys(marks).length > 0;
-  const hasStrokes = strokes.length > 0;
+  const hasStrokes = strokes.length > 0 || stamps.length > 0;
 
   const handleRequestClearDrawings = () => {
     if (hasStrokes) {
@@ -180,6 +184,7 @@ export function PlayerScreen() {
         card: createUnsignedCard(p.card.name),
         marks: {},
         strokes: [],
+        stamps: [],
       }));
       setMessage("");
     } else {
@@ -236,6 +241,7 @@ export function PlayerScreen() {
           },
           marks: {},
           strokes: [],
+          stamps: [],
         }));
       }
       if (typeof data.card?.uid === "number" && data.card?.name) {
@@ -269,32 +275,18 @@ export function PlayerScreen() {
         card: createUnsignedCard(p.card.name),
         marks: {},
         strokes: [],
+        stamps: [],
       }));
       setMessage("");
     } else if (confirmAction === "clear-marks") {
       playerStore.update((p) => ({ ...p, marks: {} }));
     } else if (confirmAction === "clear-drawings") {
-      playerStore.update((p) => ({ ...p, strokes: [] }));
+      playerStore.update((p) => ({ ...p, strokes: [], stamps: [] }));
     } else if (confirmAction === "request-signed") {
       executeRequestSignedCard();
     }
     setConfirmAction(null);
   };
-
-  function callBingo() {
-    const result = validateBingo(card.nums, drawn, pattern);
-    setWon(result.won);
-    if (result.won) {
-      telegram.haptic.notification("success");
-    } else {
-      telegram.haptic.impact("light");
-    }
-    setMessage(
-      result.won
-        ? "Bingo! Sua combinação está completa. Que sorte bonita!"
-        : `Quase lá! Faltam ${result.closest.missing.length} pedra${result.closest.missing.length === 1 ? "" : "s"} na sua combinação mais próxima: ${result.closest.missing.map(ballLabel).join(", ")}.`,
-    );
-  }
 
   return (
     <main className="app-shell player-shell">
@@ -321,11 +313,23 @@ export function PlayerScreen() {
       <BingoCard
         nums={card.nums}
         marks={marks}
+        stamps={stamps}
+        actionLabel={
+          selectedTool === "mark"
+            ? "marcar número"
+            : `carimbar ${TOOL_LABELS[selectedTool]}`
+        }
         onMark={
           mode === "stamp"
             ? (i) => {
                 telegram.haptic.impact("light");
                 playerStore.update((p) => {
+                  if (STAMP_TYPES.includes(selectedTool as StampType))
+                    return addStamp(
+                      p,
+                      createStamp(i, selectedTool as StampType, p.color),
+                    );
+                  if (i === 12) return p;
                   const nextMarks = { ...p.marks };
                   if (nextMarks[i]) delete nextMarks[i];
                   else nextMarks[i] = p.color;
@@ -335,13 +339,25 @@ export function PlayerScreen() {
             : undefined
         }
         caption={
-          mode === "stamp"
-            ? "Toque, marque e deixe a sorte chegar."
-            : "Pode rabiscar. Essa cartela é sua!"
+          selectedTool === "mark"
+            ? "Toque para marcar seus números."
+            : selectedTool === "freehand"
+              ? "Pode rabiscar. Essa cartela é sua!"
+              : selectedTool === "eraser"
+                ? "Apague tinta ou toque num carimbo."
+                : `Carimbo ${TOOL_LABELS[selectedTool]} · toque na cartela.`
         }
       >
         <DrawingCanvas
           strokes={strokes}
+          onEraseCell={(index) =>
+            playerStore.update((p) => {
+              const stamp = p.stamps
+                .filter((s) => s.cellIndex === index)
+                .at(-1);
+              return stamp ? removeStamp(p, stamp.id) : p;
+            })
+          }
           mode={mode}
           color={color}
           width={width}
@@ -356,7 +372,7 @@ export function PlayerScreen() {
               setMessage(
                 "O papel está cheio de arte! Desfaça ou limpe alguns rabiscos para continuar.",
               );
-              setWon(false);
+
               return;
             }
             playerStore.update((p) => ({
@@ -366,6 +382,18 @@ export function PlayerScreen() {
           }}
         />
       </BingoCard>
+      <StampCase
+        selectedTool={selectedTool}
+        selectedColor={color}
+        onTool={(tool) => {
+          telegram.haptic.selection();
+          playerStore.update((p) => ({ ...p, selectedTool: tool }));
+        }}
+        onColor={(selected) => {
+          telegram.haptic.selection();
+          playerStore.update((p) => ({ ...p, color: selected }));
+        }}
+      />
       <DrawingToolbar
         mode={mode}
         setMode={setMode}
@@ -374,15 +402,10 @@ export function PlayerScreen() {
         undo={() =>
           playerStore.update((p) => ({ ...p, strokes: p.strokes.slice(0, -1) }))
         }
+        marking={selectedTool === "mark"}
+        canClear={hasStrokes}
         canUndo={strokes.length > 0}
         clear={handleRequestClearDrawings}
-      />
-      <MarkerCase
-        color={color}
-        onSelect={(selected) => {
-          playerStore.update((p) => ({ ...p, color: selected }));
-          if (mode === "eraser") setMode("pen");
-        }}
       />
       <div className="play-actions">
         <button
@@ -398,10 +421,6 @@ export function PlayerScreen() {
             marcas
           </span>
         </button>
-        <button className="bingo-button" onClick={callBingo}>
-          <Icon name="star" width={22} height={22} /> BINGO!{" "}
-          <Icon name="star" width={22} height={22} />
-        </button>
         <button
           className="round-button action-small"
           onClick={handleRequestSwap}
@@ -416,27 +435,9 @@ export function PlayerScreen() {
         </button>
       </div>
       {message && (
-        <div
-          ref={resultRef}
-          className={`result-note paper ${won ? "celebration" : ""}`}
-          role="status"
-        >
-          <strong>
-            {won ? (
-              <>
-                <Icon name="star" className="inline-icon" /> B I N G O{" "}
-                <Icon name="star" className="inline-icon" />
-              </>
-            ) : (
-              "De olho na próxima pedra"
-            )}
-          </strong>
-          <p>{message}</p>
-          <small>
-            Conferência local · {PATTERN_LABELS[pattern].toLowerCase()}. Nenhum
-            pedido foi enviado ao organizador.
-          </small>
-        </div>
+        <p className="notice" role="status">
+          {message}
+        </p>
       )}
       <div className="local-caption">
         <span className="status-dot" />
@@ -591,8 +592,8 @@ export function PlayerScreen() {
                   className="help-text"
                   style={{ fontSize: "0.75rem", opacity: 0.8 }}
                 >
-                  Ambiente de desenvolvimento local ativo. Em produção,
-                  cartelas BNG1S exigem autenticação do Telegram.
+                  Ambiente de desenvolvimento local ativo. Em produção, cartelas
+                  BNG1S exigem autenticação do Telegram.
                 </p>
               </>
             ) : (
@@ -664,13 +665,13 @@ export function PlayerScreen() {
             </div>
             <p id="dialog-desc" className="dialog-message">
               {confirmAction === "swap" &&
-                "Sua cartela atual, todas as manchas de tinta e seus rabiscos serão substituídos por uma nova cartela. Deseja continuar?"}
+                "Sua cartela atual, todas as manchas de tinta e seus rabiscos e carimbos serão substituídos por uma nova cartela. Deseja continuar?"}
               {confirmAction === "clear-marks" &&
                 "Todas as marcas de tinta serão apagadas. Os números da cartela e seus rabiscos a caneta serão preservados."}
               {confirmAction === "clear-drawings" &&
-                "Todos os traços e desenhos serão removidos do papel. Os números e suas marcações de tinta continuarão intactos."}
+                "Todos os traços e carimbos serão removidos do papel. Os números e suas marcações de tinta continuarão intactos."}
               {confirmAction === "request-signed" &&
-                "Sua cartela atual, todas as manchas de tinta e seus rabiscos serão substituídos pela nova cartela verificada emitida pelo servidor. Deseja continuar?"}
+                "Sua cartela atual, todas as manchas de tinta e seus rabiscos e carimbos serão substituídos pela nova cartela verificada emitida pelo servidor. Deseja continuar?"}
             </p>
             <div className="dialog-actions">
               <button

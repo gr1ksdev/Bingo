@@ -51,12 +51,14 @@ export function DrawingCanvas({
   color,
   width,
   onStroke,
+  onEraseCell,
 }: {
   strokes: Stroke[];
   mode: DrawingMode;
   color: string;
   width: number;
   onStroke: (s: Stroke) => void;
+  onEraseCell?: (index: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const active = useRef<Stroke | null>(null);
@@ -160,6 +162,30 @@ export function DrawingCanvas({
         const inv = getInverseTransformMatrix(event.currentTarget);
         inverseMatrix.current = inv;
 
+        if (mode === "eraser" && onEraseCell) {
+          const point = calculatePoint(event, inv);
+          const grid =
+            event.currentTarget.parentElement?.querySelector<HTMLElement>(
+              ".number-grid",
+            );
+          if (grid) {
+            const x =
+              point.x * event.currentTarget.clientWidth - grid.offsetLeft;
+            const y =
+              point.y * event.currentTarget.clientHeight - grid.offsetTop;
+            if (
+              x >= 0 &&
+              y >= 0 &&
+              x < grid.offsetWidth &&
+              y < grid.offsetHeight
+            ) {
+              onEraseCell(
+                Math.floor((y / grid.offsetHeight) * 5) * 5 +
+                  Math.floor((x / grid.offsetWidth) * 5),
+              );
+            }
+          }
+        }
         active.current = {
           id: crypto.randomUUID(),
           color,

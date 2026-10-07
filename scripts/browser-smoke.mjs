@@ -51,6 +51,7 @@ try {
     () => document.querySelector(".drawing-active") !== null,
   );
   const draw = async (xOffset = 0) => {
+    await play.locator("canvas").scrollIntoViewIfNeeded();
     const box = await play.locator("canvas").boundingBox();
     const session = await context.newCDPSession(play);
     const start = {
@@ -177,9 +178,9 @@ try {
   await admin.getByRole("button", { name: "VALIDAR CARTELA" }).click();
   await admin.locator(".validation-result").scrollIntoViewIfNeeded();
   await admin
-    .getByText("Cartela não verificada", { exact: true })
+    .getByText("CARTELA NÃO VERIFICADA", { exact: true })
     .waitFor({ state: "attached", timeout: 5000 });
-  await admin.getByText("João QA", { exact: true }).waitFor();
+  await admin.getByText("Nome: João QA", { exact: true }).waitFor();
   assert.equal(
     await admin.locator(".validation-result .bingo-cell").count(),
     25,
@@ -206,11 +207,31 @@ try {
   await play.waitForFunction(
     () => document.querySelector(".draw-count")?.textContent === "75/75",
   );
-  await play.getByRole("button", { name: "BINGO!" }).click();
-  await play.locator(".result-note").scrollIntoViewIfNeeded();
-  await play
-    .getByText("B I N G O", { exact: true })
-    .waitFor({ state: "attached" });
+  assert.equal(await play.getByRole("button", { name: "BINGO!" }).count(), 0);
+  await play.getByRole("button", { name: "Usar carimbo coração" }).tap();
+  await play.getByRole("button", { name: "Canetinha roxa" }).tap();
+  assert.equal((await getPlayer()).selectedTool, "heart");
+  await play.locator(".number-grid button").first().tap();
+  let stamped = await getPlayer();
+  assert.equal(stamped.stamps[0].type, "heart");
+  assert.equal(stamped.stamps[0].color, "#873ec2");
+  const impression = stamped.stamps[0];
+  await play.getByRole("button", { name: "Usar carimbo gatinho" }).tap();
+  await play.locator(".number-grid button").nth(12).tap();
+  assert.equal((await getPlayer()).stamps[1].cellIndex, 12);
+  await play.reload();
+  await play.getByRole("button", { name: "Canetinha roxa" }).waitFor();
+  assert.deepEqual((await getPlayer()).stamps[0], impression);
+  await play.getByRole("button", { name: "Borracha dos rabiscos" }).tap();
+  await play.locator("canvas").scrollIntoViewIfNeeded();
+  const stampedCell = await play.locator(".number-grid button").first().boundingBox();
+  await play.touchscreen.tap(stampedCell.x + stampedCell.width / 2, stampedCell.y + stampedCell.height / 2);
+  stamped = await getPlayer();
+  assert.equal(stamped.stamps.length, 1);
+  assert.equal(stamped.stamps[0].type, "cat");
+  assert.deepEqual(stamped.card.nums, initial.card.nums);
+  await play.getByRole("button", { name: "Usar carimbo coração" }).tap();
+  await play.locator(".number-grid button").first().tap();
   for (const width of [360, 375, 390, 412, 430]) {
     for (const route of ["/", "/play", "/admin"]) {
       await play.setViewportSize({ width, height: 844 });
@@ -223,12 +244,44 @@ try {
         false,
         `Overflow: ${route} at ${width}px`,
       );
+      if (route === "/play") {
+        for (const selector of [".wood-stamp", ".marker-slot"]) {
+          const targets = await play.locator(selector).evaluateAll(els => els.map(el => ({ w: el.getBoundingClientRect().width, h: el.getBoundingClientRect().height })));
+          assert.ok(targets.every(t => t.w >= 44 && t.h >= 44), selector + " comfortable touch targets at " + width);
+        }
+      }
       if (width === 390)
         await play.screenshot({
           path: `${artifacts}/${route === "/" ? "landing" : route.slice(1)}-390.png`,
           fullPage: true,
         });
     }
+  }
+  // Simulated Telegram UI lifecycle; cryptographic authenticity is covered by API tests.
+  for (const withHaptics of [false, true]) {
+    const tg = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    await tg.route("https://telegram.org/js/telegram-web-app.js", route => route.abort());
+    await tg.addInitScript(({ withHaptics }) => {
+      window.Telegram = { WebApp: { initData: "qa-candidate",
+        ready() {}, expand() {},
+        ...(withHaptics ? { HapticFeedback: { selectionChanged() {}, impactOccurred() {} } } : {})
+      }};
+    }, { withHaptics });
+    await tg.route("**/api/auth/telegram", route => route.fulfill({
+      json: { authenticated: true, user: { id: 123, firstName: "Pessoa QA", displayName: "Pessoa QA" } }
+    }));
+    const page = await tg.newPage();
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(base + "/play");
+    await page.getByText(/Jogando como Pessoa QA/).waitFor();
+    await page.getByRole("button", { name: "Canetinha verde" }).tap();
+    await page.getByRole("button", { name: "Usar carimbo flor" }).tap();
+    await page.locator(".number-grid button").first().tap();
+    const local = await page.evaluate(() => JSON.parse(localStorage.getItem("bingo:player:v1")));
+    assert.equal(local.stamps[0].type, "flower");
+    assert.equal(local.stamps[0].color, "#20875b");
+    assert.deepEqual(local.marks, {});
+    await tg.close();
   }
   const unavailable = await context.request.post(`${base}/api/cards/create`, {
     data: {},
@@ -240,7 +293,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser smoke passed: touch, ink, drawing, eraser, undo, persistence, copy, admin, unsigned validator, 75 draws, Bingo and 15 mobile layouts.",
+    "Browser smoke passed: touch, ink, drawing, eraser, undo, persistence, copy, admin, unsigned validator, 75 draws, stamps, stamp eraser and 15 mobile layouts.",
   );
   console.log(`Screenshots: ${artifacts}`);
 } catch (error) {

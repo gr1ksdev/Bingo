@@ -1490,3 +1490,68 @@ textarea {
     scroll-behavior: auto !important;
   }
 }
+
+/* A single stationery box directly beneath the paper. */
+.stamp-case {
+  margin: 8px 0 14px;
+  padding: 5px;
+  border: 5px solid #794722;
+  border-radius: 9px 6px 8px 7px;
+  background: url("/wood-grain.svg"), linear-gradient(100deg, #b77b40, #965b2c 65%, #c18a4e);
+  box-shadow: inset 0 0 0 2px #dfad69, 0 5px 0 #482917, 0 10px 15px #24130866;
+}
+.stamp-case h2 {
+  text-align: center;
+  margin: 0 0 7px;
+  font: 800 18px var(--font-hand);
+  color: #39220f;
+  text-shadow: 0 1px #e3b87899;
+  letter-spacing: 1px;
+}
+.stamp-nest {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 8px 15px;
+  background: url("/wood-grain.svg"), #55341f;
+  border-radius: 4px;
+  box-shadow: inset 0 3px 7px #211208;
+}
+.wood-stamp {
+  flex: 0 0 calc((100% - 30px) / 4);
+  min-height: 65px;
+  padding: 4px 3px 2px;
+  border: 2px solid #a16c37;
+  border-radius: 5px 3px 5px 4px;
+  background: url("/wood-grain.svg"), linear-gradient(115deg, #ecc790, #c89557);
+  box-shadow: inset 1px 1px 0 #ffe3b1, 0 5px 0 #75451f, 2px 7px 3px #190c09aa;
+  transform: rotate(var(--tilt));
+  transition: transform 120ms, box-shadow 120ms;
+}
+.stamp-face { display: block; width: 41px; height: 41px; margin: auto; }
+.stamp-name { display: block; font: 12px var(--font-hand); color: #503219; }
+.wood-stamp[aria-pressed="true"] {
+  transform: translateY(-5px) rotate(var(--tilt));
+  box-shadow: inset 0 0 0 2px #61381f, 0 6px 0 #75451f, 3px 12px 6px #190c09bb;
+}
+.wood-stamp[aria-pressed="true"] .stamp-name { text-decoration: underline; font-weight: 800; }
+.stamp-case .marker-section { margin: 12px 0 0; border-top: 5px ridge #b47b44; padding-top: 9px; }
+.stamp-case .case-label { padding: 0 5px; }
+.stamp-case .case-label .handwritten { display: none; }
+.stamp-case .case-label .paper-strip { font-size: 14px; }
+.stamp-case .marker-case { border: 0; border-radius: 3px; padding: 5px 0 0; background: #4d301f; box-shadow: inset 0 3px 7px #211208; }
+.stamp-case .case-lining { padding: 4px 0 0; border-radius: 3px; }
+.stamp-case .zipper-pull { display: none; }
+.stamp-case .marker-slot { min-height: 100px; }
+.stamp-ink { position: absolute; width: 83%; height: 83%; pointer-events: none; z-index: 1; animation: stamp-pressure 130ms ease-out; }
+.stamp-ink svg { width: 100%; height: 100%; }
+.free-star { position: relative; z-index: 2; }
+.player-shell .play-actions { justify-content: space-between; }
+@keyframes stamp-pressure { from { scale: 1.06; } to { scale: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .wood-stamp { transition: none; }
+  .stamp-ink { animation: none; }
+}
+
+.player-shell .bingo-cell:disabled { opacity: 1; cursor: default; }

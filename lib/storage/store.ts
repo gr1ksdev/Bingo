@@ -6,6 +6,7 @@ export function createStore<T>(
   key: string,
   initial: () => T,
   validate: (v: unknown) => v is T,
+  normalize: (v: unknown) => unknown = (v) => v,
 ) {
   let snapshot: Snapshot<T> = null;
   const listeners = new Set<() => void>();
@@ -14,7 +15,7 @@ export function createStore<T>(
     try {
       const raw = window.localStorage.getItem(key);
       if (raw) {
-        const value: unknown = JSON.parse(raw);
+        const value: unknown = normalize(JSON.parse(raw));
         if (validate(value)) return { value, warning: null };
         return {
           value: initial(),

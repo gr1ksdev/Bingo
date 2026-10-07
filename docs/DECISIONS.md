@@ -64,3 +64,11 @@ O cliente adota estados explícitos de identidade (`browser`, `telegram-unverifi
 3. Waterfall de extração de credenciais candidatas no cliente (`window.Telegram.WebApp.initData` → hash `#tgWebAppData=` → search `?tgWebAppData=` → `sessionStorage.initParams`), garantindo interoperabilidade com clientes oficiais e forks de WebViews (ex: `com.exteraless.app`). Cabeçalhos HTTP como `User-Agent` ou `x-requested-with` nunca conferem autenticação por si sós.
 4. Derivação server-authoritative do nome em BNG1S (`firstName + lastName` se `lastName` existir, senão `firstName`), ignorando qualquer nome fornecido pelo cliente. Na interface (`PlayerScreen`), cartelas verificadas BNG1S desabilitam o campo editável e exibem um selo estático de leitura em papel com a indicação `✓ Verificado`.
 5. Diagnóstico de ambiente client-side via `getDiagnosticInfo()` reportando métricas estruturadas com zero vazamento de hashes ou segredos.
+
+## ADR-015 — Expressão visual local e verdade autoritativa da partida
+
+Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.
+
+Preservar utilitários puros de validação e seus testes porque o organizador ainda os utiliza. Não sofisticar a conferência local do jogador. Cartela/identidade/partida/sorteios/claims pertencem à autoridade server-side; marks/strokes/stamps e escolhas de ferramenta/cor pertencem ao navegador.
+
+Escolher SVG por célula para carimbos preserva o canvas existente, mantém números acima da tinta e permite remoção individual. Borracha toca uma célula para remover apenas seu carimbo mais recente; arrastar continua apagando rabiscos. Seleção direta no estojo dispensa modal e desacopla cor da ferramenta.

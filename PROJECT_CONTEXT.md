@@ -17,4 +17,8 @@ Confiança criptográfica e tokens:
 
 Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marcas de tinta com variação orgânica determinística, estojo físico de sete canetas, botões táteis, diálogo modal integrado de confirmação em papel; safe areas, reduced motion e progressive haptics.
 
-Validação em 2026-10-07: lint, typecheck, 52 testes e build de produção passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.
+Validação em 2026-10-07: lint, typecheck, 67 testes e build de produção passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.
+
+## Carimbos locais — 2026-10-07
+
+Carimbos são expressão cosmética exclusivamente client-side: nunca entram em BNG1S/BNG1U, assinatura, identidade ou regras. O botão BINGO local e suas mensagens foram removidos do /play. O botão BINGO retornará com claims server-side quando partidas persistentes forem implementadas, com gid real, sorteios oficiais e cartela vinculada à partida. Essa é a próxima fronteira arquitetural; nenhum banco ou multiplayer foi implementado nesta etapa.

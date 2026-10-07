@@ -1,18 +1,23 @@
 import type { ReactNode } from "react";
 import { LETTERS } from "@/lib/bingo/constants";
 import type { CardNumbers, Marks } from "@/lib/bingo/types";
+import type { CardStamp } from "@/lib/stamps";
 import { BingoCell } from "./BingoCell";
 import { Icon } from "@/components/ui/Icon";
 export function BingoCard({
   nums,
   marks = {},
   onMark,
+  stamps = [],
+  actionLabel,
   children,
   drawn = [],
   caption = "Um pouquinho de sorte. Um montão de tinta.",
 }: {
   nums: CardNumbers;
   marks?: Marks;
+  stamps?: CardStamp[];
+  actionLabel?: string;
   onMark?: (i: number) => void;
   children?: ReactNode;
   drawn?: number[];
@@ -40,6 +45,8 @@ export function BingoCard({
               number={number}
               color={marks[i]}
               onMark={onMark}
+              actionLabel={actionLabel}
+              stamps={stamps.filter((s) => s.cellIndex === i)}
               highlighted={number !== null && drawn.includes(number)}
             />
           ))}
