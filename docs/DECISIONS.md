@@ -56,3 +56,11 @@ O endpoint de diagnóstico `GET /api/health` retorna exclusivamente flags boolea
 ## ADR-013 — Estados de identidade do cliente, diálogo modal e progressive haptics
 
 O cliente adota estados explícitos de identidade (`browser`, `telegram-unverified`, `telegram-verified`, `telegram-invalid`, `service-unavailable`). A substituição de uma cartela BNG1U por BNG1S respeita o diálogo modal integrado em papel para prevenir perda acidental de marcações e desenhos. Haptic feedback utiliza progressive enhancement nas ações de marcação, conferência de pedras, BINGO e emissão de cartela assinada sem impacto em navegadores convencionais.
+
+## ADR-014 — Injeção do SDK Telegram, ciclo de vida robusto, waterfall fallback e autoridade estrita de nomes
+
+1. Injeção do SDK oficial via `<Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />` no `app/layout.tsx` para assegurar disponibilização do objeto global `window.Telegram`.
+2. Máquina de estados explícita `TelegramAuthState` (`BROWSER`, `TELEGRAM_INITIALIZING`, `TELEGRAM_UNAUTHENTICATED`, `TELEGRAM_AUTHENTICATING`, `TELEGRAM_AUTHENTICATED`, `TELEGRAM_AUTH_ERROR`) com watcher limitado (10 ticks de 100ms = 1000ms max) para capturar inicialização assíncrona do WebApp.
+3. Waterfall de extração de credenciais candidatas no cliente (`window.Telegram.WebApp.initData` → hash `#tgWebAppData=` → search `?tgWebAppData=` → `sessionStorage.initParams`), garantindo interoperabilidade com clientes oficiais e forks de WebViews (ex: `com.exteraless.app`). Cabeçalhos HTTP como `User-Agent` ou `x-requested-with` nunca conferem autenticação por si sós.
+4. Derivação server-authoritative do nome em BNG1S (`firstName + lastName` se `lastName` existir, senão `firstName`), ignorando qualquer nome fornecido pelo cliente. Na interface (`PlayerScreen`), cartelas verificadas BNG1S desabilitam o campo editável e exibem um selo estático de leitura em papel com a indicação `✓ Verificado`.
+5. Diagnóstico de ambiente client-side via `getDiagnosticInfo()` reportando métricas estruturadas com zero vazamento de hashes ou segredos.

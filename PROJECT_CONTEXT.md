@@ -17,4 +17,4 @@ Confiança criptográfica e tokens:
 
 Direção visual: madeira quente, papel creme, título manuscrito, números legíveis, marcas de tinta com variação orgânica determinística, estojo físico de sete canetas, botões táteis, diálogo modal integrado de confirmação em papel; safe areas, reduced motion e progressive haptics.
 
-Validação em 2026-10-06: lint, typecheck, 44 testes e build passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.
+Validação em 2026-10-07: lint, typecheck, 52 testes e build de produção passando. Detalhes, contratos e próximos passos em `docs/HANDOFF.md`.

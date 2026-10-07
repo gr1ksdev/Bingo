@@ -42,25 +42,30 @@ A aplicação está em condições comprovadas de rodar como **TELEGRAM MINI APP
 
 ## Última tarefa concluída
 
-Preparação real para **TELEGRAM MINI APP EM PRODUÇÃO**:
-1. **Auditoria e Blindagem de Produção vs Desenvolvimento:**
-   - Em produção (`NODE_ENV === "production"`), `POST /api/cards/signed` recusa categoricamente emissões sem `initData` (HTTP 401) e sem bot configurado (HTTP 503). Zero brechas ou fallbacks `dev-local` em produção.
-   - O `uid` é obrigatoriamente extraído do payload criptograficamente validado do Telegram, ignorando qualquer `uid` arbitrário fornecido pelo cliente.
-   - O mecanismo `dev-local` foi explicitamente isolado e só funciona quando `NODE_ENV !== "production"`.
-2. **Auditoria Criptográfica do Telegram `initData`:**
-   - Substituição de `localeCompare` por ordenação pura baseada em ASCII `(a < b ? -1 : a > b ? 1 : 0)`.
-   - Teste de vetor com ordenação ASCII (`auth_date`, `chat_type`, `query_id`, `user`).
-3. **Client Adapter e Lifecycle do Mini App:**
-   - Centralização em `lib/telegram/client.ts` chamando com segurança `ready()` e `expand()`.
-   - Progressive haptics para `impact`, `notification` e `selection`.
-   - Nenhuma dependência obrigatória do objeto `window.Telegram` (funciona perfeitamente em browsers normais).
-4. **Estados de Identidade e Troca Segura de Cartela:**
-   - Mesa do jogador adota estados explícitos de identidade e só exibe o nome autenticado após validação no servidor.
-   - Solicitação de cartela verificada que substitua marcações/desenhos existentes aciona o diálogo modal em papel/madeira.
-5. **Endpoint de Diagnóstico Seguro (`GET /api/health`):**
-   - Retorna `{ ok: true, status, signingConfigured, telegramConfigured }` com `Cache-Control: no-store` sem expor conteúdo de segredos.
-6. **Guias Detalhados:**
-   - Criação de `docs/TELEGRAM_SETUP.md` e `docs/DEPLOYMENT.md`.
+Resolução do bug de produção no **TELEGRAM ANDROID WEBVIEW & CICLO DE VIDA ROBUSTO**:
+1. **Identificação da Causa-Raiz em Produção:**
+   - O `app/layout.tsx` não incluía o script oficial `<Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />`. Sem ele, WebViews do Telegram não injetam o objeto `window.Telegram.WebApp`, impedindo que `initData` fosse lido e fazendo com que `POST /api/auth/telegram` nunca fosse chamado.
+   - Verificações no client abortavam imediatamente no primeiro tick síncrono antes que qualquer parâmetro ou bridge fosse processado.
+2. **Injeção do SDK Oficial do Telegram:**
+   - Adicionado no `<head>` do `RootLayout` via `next/script` com estratégia `beforeInteractive`.
+3. **Cascata de Resolução (Waterfall Fallback) em `getInitData()`:**
+   - Suporta múltiplos canais de extração de credenciais candidatas:
+     1. `window.Telegram.WebApp.initData` (oficial);
+     2. Parâmetro em hash de URL: `#tgWebAppData=...`;
+     3. Parâmetro em search de URL: `?tgWebAppData=...`;
+     4. `sessionStorage.getItem("initParams")`.
+   - Compatibilidade robusta comprovada com clientes oficiais e forks Android (ex: `com.exteraless.app`), sem comprometer a segurança (credenciais continuam exigindo validação HMAC server-side).
+4. **Ciclo de Vida do Cliente (`TelegramAuthState`):**
+   - 6 estados explícitos: `BROWSER`, `TELEGRAM_INITIALIZING`, `TELEGRAM_UNAUTHENTICATED`, `TELEGRAM_AUTHENTICATING`, `TELEGRAM_AUTHENTICATED`, `TELEGRAM_AUTH_ERROR`.
+   - Watcher limitado e assíncrono (10 verificações de 100ms = 1000ms max) para capturar injeção tardia do SDK ou parâmetros em WebViews.
+5. **Autoridade Estrita de Nomes em BNG1S:**
+   - O servidor deriva o nome autoritativo da identidade validada (`firstName + lastName` ou `firstName`).
+   - `body.name` enviado pelo cliente é categoricamente ignorado na emissão assinada.
+   - Na interface do jogador (`PlayerScreen`), cartelas verificadas BNG1S desabilitam a edição e exibem um selo estático de papel com a indicação `✓ Verificado`.
+6. **Subtítulo Condicional no Cabeçalho:**
+   - `Partida #... · Jogando como <displayName>` é renderizado estritamente quando `authState === "TELEGRAM_AUTHENTICATED"`.
+7. **Suíte de Testes Expandida:**
+   - 52 testes automatizados cobrindo disponibilidade imediata, inicialização tardia com hash, fallbacks de busca e storage, rejeição de headers isolados (`User-Agent`, `x-requested-with`), autoridade de nomes e compatibilidade BNG1U.
 
 ## Em andamento
 
@@ -75,21 +80,21 @@ Nenhuma tarefa de implementação em aberto nesta etapa.
 ## Arquivos importantes
 
 - `AGENTS.md` / `PROJECT_CONTEXT.md`: protocolo e visão permanente.
-- `lib/telegram/*`: adapter client, ciclo de vida, haptics e validação criptográfica oficial de Mini Apps.
+- `app/layout.tsx`: carregamento do SDK oficial do Telegram Mini Apps (`strategy="beforeInteractive"`).
+- `lib/telegram/*`: adapter client, ciclo de vida (`TelegramAuthState`), diagnóstico (`getDiagnosticInfo`), haptics e validação criptográfica oficial de Mini Apps.
 - `lib/bingo/token/*`: domínio modular de tokens (BNG1U, BNG1S, parser, HMAC).
 - `app/api/cards/signed/route.ts`: rota autoritativa de cartelas BNG1S blindada para produção.
+- `app/api/cards/create/route.ts`: rota compatível com autoridade de nomes server-side.
+- `app/api/auth/telegram/route.ts`: autenticação e resolução de `displayName`.
 - `app/api/health/route.ts`: diagnóstico seguro de deploy.
-- `app/api/auth/telegram/route.ts`: rota de validação de sessão Telegram.
-- `app/api/cards/verify/route.ts`: rota de conferência e integridade.
-- `components/bingo/PlayerScreen.tsx`: mesa do jogador com estados de identidade, haptics e confirmação modal.
-- `components/admin/AdminScreen.tsx` e `DrawPanel.tsx`: mesa do organizador com haptics no sorteio.
-- `docs/TELEGRAM_SETUP.md`: guia passo a passo do BotFather.
+- `components/bingo/PlayerScreen.tsx`: mesa do jogador com estados de autenticação, selo de nome verificado e confirmação modal.
+- `docs/TELEGRAM_SETUP.md`: guia passo a passo do BotFather e arquitetura do cliente.
 - `docs/DEPLOYMENT.md`: guia de deploy na Vercel e auditoria.
-- `tests/production-telegram.test.ts`: suíte de testes de produção, segurança e Telegram.
+- `tests/production-telegram.test.ts`: suíte de testes de produção, segurança, cliente Telegram e autoridade BNG1S.
 
 ## Decisões recentes
 
-Ver ADR-011, ADR-012 e ADR-013. Isolamento absoluto de produção: BNG1S exige Telegram autenticado; `dev-local` é restrito a desenvolvimento. Ordenação determinística ASCII para initData. Diálogo modal integrado protege contra substituição involuntária de cartelas com marcas ou rabiscos.
+Ver ADR-011, ADR-012, ADR-013 e ADR-014. Injeção do SDK oficial do Telegram no layout raiz; máquina de estados `TelegramAuthState` com watcher limitado; cascata de fallback para extração de credenciais candidatas; autoridade estrita de nomes no servidor para cartelas BNG1S com badge estático em papel.
 
 ## Problemas conhecidos
 
@@ -115,7 +120,8 @@ Node 22+, `npm ci`, `npm run dev`. Para produção local: `npm run build`, `npm 
 
 - lint: passou, zero warnings
 - typecheck: passou, zero erros
-- tests: 44/44 passaram (10 novos testes dedicados de produção e Telegram)
+- tests: 52/52 passaram (18 testes dedicados de produção, segurança e Telegram)
 - build: passou com 12 rotas estáticas e dinâmicas compiladas com sucesso
 - responsividade: zero overflow
 - auditoria de produção: zero vulnerabilidades
+

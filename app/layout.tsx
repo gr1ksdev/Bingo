@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "@fontsource/nunito/latin-400.css";
 import "@fontsource/nunito/latin-600.css";
 import "@fontsource/nunito/latin-700.css";
@@ -6,6 +7,7 @@ import "@fontsource/nunito/latin-800.css";
 import "@fontsource/kalam/latin-400.css";
 import "@fontsource/kalam/latin-700.css";
 import "./globals.css";
+
 export const metadata: Metadata = {
   title: "Bingo de mesa — papel, tinta e sorte",
   description:
@@ -17,12 +19,14 @@ export const metadata: Metadata = {
     title: "Bingo",
   },
 };
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#55321e",
 };
+
 export default function RootLayout({
   children,
 }: {
@@ -30,6 +34,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body>
         <a href="#conteudo" className="skip-link">
           Pular para o conteúdo

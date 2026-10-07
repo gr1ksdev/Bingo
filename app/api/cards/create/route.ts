@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     }
 
     const verifiedUser = verifyTelegramUser(body.initData, botToken);
+    const name = verifiedUser.lastName
+      ? `${verifiedUser.firstName} ${verifiedUser.lastName}`.trim().slice(0, 60)
+      : verifiedUser.firstName.trim().slice(0, 60);
     const card: SignedCard = {
       v: 1,
       uid: verifiedUser.id,
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
       cid: crypto.randomUUID(),
       nums: generateCard(),
       iat: Math.floor(Date.now() / 1000),
-      name: verifiedUser.firstName,
+      name,
     };
 
     return json({

@@ -36,10 +36,17 @@ export async function POST(request: Request) {
     }
 
     const user = verifyTelegramUser(body.initData, botToken);
+    const displayName = user.lastName
+      ? `${user.firstName} ${user.lastName}`.trim().slice(0, 60)
+      : user.firstName.trim().slice(0, 60);
+
     return json({
       ok: true,
       authenticated: true,
-      user,
+      user: {
+        ...user,
+        displayName,
+      },
     });
   } catch (err) {
     const message =

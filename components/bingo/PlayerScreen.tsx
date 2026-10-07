@@ -6,6 +6,7 @@ import { encodeUnsigned } from "@/lib/bingo/token";
 import { ballLabel, PATTERN_LABELS } from "@/lib/bingo/constants";
 import { validateBingo } from "@/lib/bingo/validation";
 import { telegram } from "@/lib/telegram/adapter";
+import type { TelegramAuthState, TelegramUser } from "@/lib/telegram/types";
 import { BingoHeader } from "./BingoHeader";
 import { BingoCard } from "./BingoCard";
 import { MarkerCase } from "./MarkerCase";
@@ -21,13 +22,6 @@ type ConfirmAction =
   | "request-signed"
   | null;
 
-type IdentityState =
-  | "browser"
-  | "telegram-unverified"
-  | "telegram-verified"
-  | "telegram-invalid"
-  | "service-unavailable";
-
 export function PlayerScreen() {
   const player = playerStore.useValue();
   const game = gameStore.useValue();
@@ -40,56 +34,94 @@ export function PlayerScreen() {
   const [signedToken, setSignedToken] = useState<string | null>(null);
   const [signedLoading, setSignedLoading] = useState(false);
   const [signedNotice, setSignedNotice] = useState("");
-  const [identityState, setIdentityState] = useState<IdentityState>("browser");
-  const [verifiedUser, setVerifiedUser] = useState<{
-    id: number;
-    firstName: string;
-  } | null>(null);
+  const [authState, setAuthState] = useState<TelegramAuthState>("BROWSER");
+  const [verifiedUser, setVerifiedUser] = useState<TelegramUser | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const isDev = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
-    telegram.init();
-    if (!telegram.isTelegramEnvironment()) return;
-
     let active = true;
-    const initData = telegram.getInitData();
-    fetch("/api/auth/telegram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData }),
-    })
-      .then(async (res) => {
+    telegram.init();
+
+    const candidateInitData = telegram.getInitData();
+    if (candidateInitData) {
+      const initTimer = setTimeout(() => {
+        if (active) authenticate(candidateInitData);
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(initTimer);
+      };
+    }
+
+    if (telegram.isTelegramEnvironment()) {
+      setTimeout(() => {
+        if (active) setAuthState("TELEGRAM_INITIALIZING");
+      }, 0);
+    }
+
+    let attempts = 0;
+    const maxAttempts = 10;
+    const interval = setInterval(() => {
+      if (!active) return;
+      attempts += 1;
+      telegram.init();
+
+      const data = telegram.getInitData();
+      if (data) {
+        clearInterval(interval);
+        authenticate(data);
+        return;
+      }
+
+      if (telegram.isTelegramEnvironment()) {
+        setAuthState((curr) =>
+          curr === "BROWSER" ? "TELEGRAM_INITIALIZING" : curr,
+        );
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        if (telegram.isTelegramEnvironment()) {
+          setAuthState("TELEGRAM_UNAUTHENTICATED");
+        } else {
+          setAuthState("BROWSER");
+        }
+      }
+    }, 100);
+
+    async function authenticate(data: string) {
+      setAuthState("TELEGRAM_AUTHENTICATING");
+      try {
+        const res = await fetch("/api/auth/telegram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData: data }),
+          signal: AbortSignal.timeout(8000),
+        });
         if (!active) return;
         if (res.ok) {
-          const data = await res.json();
-          if (data.authenticated && data.user) {
-            setIdentityState("telegram-verified");
-            setVerifiedUser(data.user);
+          const json = await res.json();
+          if (json.authenticated && json.user) {
+            setVerifiedUser(json.user);
+            setAuthState("TELEGRAM_AUTHENTICATED");
             return;
           }
         }
-        if (res.status === 503) {
-          setIdentityState("service-unavailable");
-        } else {
-          setIdentityState("telegram-invalid");
+        setAuthState("TELEGRAM_AUTH_ERROR");
+      } catch {
+        if (active) {
+          setAuthState("TELEGRAM_AUTH_ERROR");
         }
-      })
-      .catch(() => {
-        // Fallback gracefully on network error
-      });
+      }
+    }
 
     return () => {
       active = false;
+      clearInterval(interval);
     };
   }, []);
-
-  const isTelegram = telegram.isTelegramEnvironment();
-  const effectiveIdentity: IdentityState =
-    identityState === "browser" && isTelegram
-      ? "telegram-unverified"
-      : identityState;
 
   useEffect(() => {
     if (message)
@@ -207,8 +239,13 @@ export function PlayerScreen() {
         }));
       }
       if (typeof data.card?.uid === "number" && data.card?.name) {
-        setVerifiedUser({ id: data.card.uid, firstName: data.card.name });
-        setIdentityState("telegram-verified");
+        setVerifiedUser((prev) => ({
+          id: data.card.uid,
+          firstName: data.card.name,
+          displayName: data.card.name,
+          ...prev,
+        }));
+        setAuthState("TELEGRAM_AUTHENTICATED");
       }
       telegram.haptic.notification("success");
     } catch (err) {
@@ -264,8 +301,8 @@ export function PlayerScreen() {
       <BingoHeader
         title="Sua mesa de Bingo"
         subtitle={
-          verifiedUser
-            ? `Partida #${game.value.id} · Jogando como ${verifiedUser.firstName}`
+          authState === "TELEGRAM_AUTHENTICATED" && verifiedUser
+            ? `Partida #${game.value.id} · Jogando como ${verifiedUser.displayName || (verifiedUser.lastName ? `${verifiedUser.firstName} ${verifiedUser.lastName}` : verifiedUser.firstName)}`
             : `Partida #${game.value.id}`
         }
       />
@@ -410,17 +447,49 @@ export function PlayerScreen() {
           Sua cartela & código <span>↗</span>
         </summary>
         <label htmlFor="player-name">Nome na cartela</label>
-        <input
-          id="player-name"
-          maxLength={60}
-          key={card.createdAt}
-          defaultValue={card.name}
-          onBlur={(e) => {
-            const name = e.target.value.trim() || "Visitante";
-            e.target.value = name;
-            playerStore.update((p) => ({ ...p, card: { ...p.card, name } }));
-          }}
-        />
+        {signedToken ? (
+          <div
+            id="player-name"
+            className="paper-badge-name"
+            style={{
+              padding: "8px 12px",
+              background: "rgba(92, 58, 33, 0.08)",
+              border: "1px dashed rgba(92, 58, 33, 0.4)",
+              borderRadius: "6px",
+              fontWeight: 700,
+              color: "#3a2312",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "8px",
+            }}
+          >
+            <span>{card.name}</span>
+            <span
+              style={{
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "#166534",
+                fontWeight: 800,
+              }}
+            >
+              ✓ Verificado
+            </span>
+          </div>
+        ) : (
+          <input
+            id="player-name"
+            maxLength={60}
+            key={card.createdAt}
+            defaultValue={card.name}
+            onBlur={(e) => {
+              const name = e.target.value.trim() || "Visitante";
+              e.target.value = name;
+              playerStore.update((p) => ({ ...p, card: { ...p.card, name } }));
+            }}
+          />
+        )}
 
         {signedToken ? (
           <>
@@ -435,7 +504,11 @@ export function PlayerScreen() {
             </p>
             {verifiedUser && (
               <p className="help-text" style={{ fontWeight: 600 }}>
-                Identidade Telegram confirmada: {verifiedUser.firstName}
+                Identidade Telegram confirmada:{" "}
+                {verifiedUser.displayName ||
+                  (verifiedUser.lastName
+                    ? `${verifiedUser.firstName} ${verifiedUser.lastName}`
+                    : verifiedUser.firstName)}
               </p>
             )}
             <p className="help-text">
@@ -459,14 +532,48 @@ export function PlayerScreen() {
               não comprova a origem da cartela.
             </p>
 
-            {effectiveIdentity === "browser" && !isDev ? (
+            {authState === "TELEGRAM_AUTHENTICATED" ? (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleRequestSignedClick}
+                disabled={signedLoading}
+                style={{ marginTop: "4px", marginBottom: "8px" }}
+              >
+                <Icon name="stamp" />
+                {signedLoading
+                  ? "Solicitando cartela…"
+                  : "Solicitar cartela verificada (BNG1S)"}
+              </button>
+            ) : authState === "TELEGRAM_INITIALIZING" ||
+              authState === "TELEGRAM_AUTHENTICATING" ? (
               <p
                 className="help-text"
                 style={{ fontStyle: "italic", marginTop: "6px" }}
               >
-                Abra pelo Telegram para gerar uma cartela verificada.
+                Conectando ao Telegram…
               </p>
-            ) : (
+            ) : authState === "TELEGRAM_UNAUTHENTICATED" ? (
+              <p
+                className="help-text"
+                style={{ fontStyle: "italic", marginTop: "6px" }}
+              >
+                Sessão Telegram sem dados de autenticação. Para emitir cartela
+                verificada, abra este Mini App através de um botão ou menu
+                oficial no Telegram.
+              </p>
+            ) : authState === "TELEGRAM_AUTH_ERROR" ? (
+              <p
+                className="help-text"
+                style={{
+                  fontStyle: "italic",
+                  marginTop: "6px",
+                  color: "#b91c1c",
+                }}
+              >
+                Não foi possível autenticar sua sessão Telegram com o servidor.
+              </p>
+            ) : isDev ? (
               <>
                 <button
                   type="button"
@@ -478,20 +585,23 @@ export function PlayerScreen() {
                   <Icon name="stamp" />
                   {signedLoading
                     ? "Solicitando cartela…"
-                    : effectiveIdentity === "browser" && isDev
-                      ? "[DEV] Solicitar cartela de teste (BNG1S)"
-                      : "Solicitar cartela verificada (BNG1S)"}
+                    : "[DEV] Solicitar cartela de teste (BNG1S)"}
                 </button>
-                {effectiveIdentity === "browser" && isDev && (
-                  <p
-                    className="help-text"
-                    style={{ fontSize: "0.75rem", opacity: 0.8 }}
-                  >
-                    Ambiente de desenvolvimento local ativo. Em produção,
-                    cartelas BNG1S exigem autenticação do Telegram.
-                  </p>
-                )}
+                <p
+                  className="help-text"
+                  style={{ fontSize: "0.75rem", opacity: 0.8 }}
+                >
+                  Ambiente de desenvolvimento local ativo. Em produção,
+                  cartelas BNG1S exigem autenticação do Telegram.
+                </p>
               </>
+            ) : (
+              <p
+                className="help-text"
+                style={{ fontStyle: "italic", marginTop: "6px" }}
+              >
+                Abra pelo Telegram para gerar uma cartela verificada.
+              </p>
             )}
 
             {signedNotice && (

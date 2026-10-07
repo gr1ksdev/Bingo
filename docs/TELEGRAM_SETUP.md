@@ -124,10 +124,52 @@ A resposta esperada deve ser:
 
 ---
 
+## Ciclo de Vida do Cliente e Resolução do SDK
+
+### 1. Injeção do Script Oficial do Telegram Mini Apps
+Para que o objeto `window.Telegram` seja injetado e disponibilizado para a aplicação, o script oficial é carregado no `app/layout.tsx`:
+```tsx
+<Script
+  src="https://telegram.org/js/telegram-web-app.js"
+  strategy="beforeInteractive"
+/>
+```
+Sem este script, o cliente Telegram não injeta `window.Telegram.WebApp` e o `initData` não é processado automaticamente pelo navegador.
+
+### 2. Estados de Ciclo de Vida (`TelegramAuthState`)
+O cliente em `/play` gerencia explicitamente seu ciclo de autenticação:
+- `BROWSER`: Aberto em navegador comum (fora do Telegram). Permite jogar com BNG1U local ou emitir cartela `[DEV]` quando fora de produção.
+- `TELEGRAM_INITIALIZING`: Detectou ambiente Telegram ou parâmetros, aguardando inicialização do SDK (watcher limitado a 10 tentativas de 100ms = 1s max).
+- `TELEGRAM_UNAUTHENTICATED`: Ambiente Telegram detectado, porém `initData` não fornecido pelo cliente/sessão.
+- `TELEGRAM_AUTHENTICATING`: `initData` capturado, autenticando com o servidor via `POST /api/auth/telegram`.
+- `TELEGRAM_AUTHENTICATED`: Sessão validada pelo servidor contra o `TELEGRAM_BOT_TOKEN`.
+- `TELEGRAM_AUTH_ERROR`: Erro na validação criptográfica (401) ou indisponibilidade de secrets (503).
+
+### 3. Cascata de Fallbacks do `getInitData()`
+Para suportar clientes oficiais e forks/versões alternativas (ex: Android WebViews com `com.exteraless.app`), o cliente adota uma cascata determinística de extração de credenciais:
+1. `window.Telegram.WebApp.initData` (oficial);
+2. Hash da URL: `#tgWebAppData=...` (injetado por muitos clientes WebApp);
+3. Search da URL: `?tgWebAppData=...`;
+4. `sessionStorage.getItem("initParams")` (persistência entre navegações do script oficial).
+
+> [!IMPORTANT]
+> Cabeçalhos HTTP como `User-Agent` ou `x-requested-with: com.exteraless.app` **NÃO constituem autenticação**. Apenas um `initData` criptograficamente validado com HMAC-SHA256 contra o `TELEGRAM_BOT_TOKEN` server-side comprova a identidade.
+
+### 4. Nome Autoritativo em BNG1S
+Para cartelas verificadas BNG1S, o nome é derivado exclusivamente no servidor:
+- Se `lastName` existir: `${firstName} ${lastName}`;
+- Caso contrário: `firstName`.
+
+O cliente não pode escolher ou adulterar o nome de uma cartela BNG1S. No drawer, o campo de edição é substituído por um selo tátil estático de leitura com a indicação `✓ Verificado`.
+
+---
+
 ## Resolução de Problemas (Troubleshooting)
 
+- **"Cartela não verificada (BNG1U)" mesmo abrindo no Telegram:**
+  - Ocorre se o script `telegram-web-app.js` não for carregado ou se a URL foi aberta em aba comum de navegador externo (ex: Chrome Custom Tabs) sem parâmetros de WebApp (`tgWebAppData`). Certifique-se de abrir via Menu Button ou link direto do Mini App configurado no @BotFather.
 - **Erro `401 UNAUTHORIZED` ao solicitar cartela assinada:**
-  - Ocorre se a aplicação for aberta fora do Telegram ou se o `initData` estiver ausente/expirado (>5 minutos). Em produção, `dev-local` é terminantemente desabilitado.
+  - Ocorre se a aplicação for aberta fora do Telegram ou se o `initData` estiver ausente ou expirado (>5 minutos). Em produção, `dev-local` é terminantemente desabilitado.
 - **Erro `503 SERVICE_UNAVAILABLE`:**
   - Ocorre se `BINGO_SIGNING_SECRET` ou `TELEGRAM_BOT_TOKEN` não estiverem preenchidos na Vercel. Verifique `/api/health`.
 - **Tela em branco no Telegram:**

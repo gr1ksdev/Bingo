@@ -67,7 +67,9 @@ export async function POST(request: Request) {
       try {
         const verifiedUser = verifyTelegramUser(body.initData as string, botToken);
         uid = verifiedUser.id;
-        name = verifiedUser.firstName;
+        name = verifiedUser.lastName
+          ? `${verifiedUser.firstName} ${verifiedUser.lastName}`.trim().slice(0, 60)
+          : verifiedUser.firstName.trim().slice(0, 60);
       } catch (authErr) {
         const message =
           authErr instanceof Error

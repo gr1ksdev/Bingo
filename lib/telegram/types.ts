@@ -5,11 +5,32 @@ export type TelegramUser = {
   username?: string;
   languageCode?: string;
   isPremium?: boolean;
+  displayName?: string;
 };
 
 export type VerifyTelegramOptions = {
   maxAgeSeconds?: number;
   now?: number;
+};
+
+export type TelegramAuthState =
+  | "BROWSER"
+  | "TELEGRAM_INITIALIZING"
+  | "TELEGRAM_UNAUTHENTICATED"
+  | "TELEGRAM_AUTHENTICATING"
+  | "TELEGRAM_AUTHENTICATED"
+  | "TELEGRAM_AUTH_ERROR";
+
+export type TelegramDiagnosticInfo = {
+  telegramGlobalAvailable: boolean;
+  webAppAvailable: boolean;
+  initDataPresent: boolean;
+  initDataLength: number;
+  platform: string | null;
+  version: string | null;
+  hasLocationHashInitData: boolean;
+  hasLocationSearchInitData: boolean;
+  hasSessionStorageInitData: boolean;
 };
 
 export type TelegramWebApp = {
@@ -43,6 +64,9 @@ declare global {
   interface Window {
     Telegram?: {
       WebApp?: TelegramWebApp;
+    };
+    TelegramWebviewProxy?: {
+      postEvent?: (eventType: string, eventData: string) => void;
     };
   }
 }
