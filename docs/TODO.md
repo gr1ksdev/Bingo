@@ -39,4 +39,5 @@
 - [x] Reconstruir StampCase como estojo de lona com zíper, tampa compacta persistida e 12 ferramentas
 - [x] Segunda passagem visual: dentes ampliados, trama reduzida, volume da casca e puxador ajustado
 - [x] 90 testes, lint/typecheck/build, dois smokes de produção e quatro capturas finais
-- [ ] Registrar commit/push desta reconstrução (ver handoff)
+- [x] Commit de implementação 1fe3f2c em main
+- [ ] Push da reconstrução: GitHub retornou Internal Server Error; repetir quando serviço permitir
